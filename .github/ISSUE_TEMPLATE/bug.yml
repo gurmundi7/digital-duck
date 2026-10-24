@@ -1,0 +1,54 @@
+name: Something's wrong
+description: The duck crashed, froze, fell through the floor, or did something odd.
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: What you expected, and what the duck did instead.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: How can I see it too?
+      placeholder: |
+        1. Say "put on skates"
+        2. Drag it to the right edge
+        3. It ...
+  - type: input
+    id: macos
+    attributes:
+      label: macOS version
+      description: Apple menu → About This Mac.
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Digital Duck version
+      description: The number in the .dmg name, or "from source" with the commit.
+  - type: dropdown
+    id: brain
+    attributes:
+      label: Chat brain
+      options:
+        - Claude Code CLI
+        - Anthropic API key
+        - None
+  - type: dropdown
+    id: access
+    attributes:
+      label: Setting under "What the duck can do"
+      options:
+        - Chat only
+        - Open apps, files and links
+        - Look things up
+        - Full access
+  - type: textarea
+    id: log
+    attributes:
+      label: Log lines, if any
+      description: "`~/Library/Application Support/Digital Duck/duck.log` for the app, `state/duck.log` for a checkout started with `npm run start:log`."
+      render: shell

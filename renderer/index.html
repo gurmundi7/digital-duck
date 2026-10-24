@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Digital Duck</title>
+    <style>
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      html, body { width: 100%; height: 100%; background: transparent; overflow: hidden;
+        font-family: -apple-system, "SF Pro Text", Helvetica, sans-serif; -webkit-user-select: none; user-select: none; }
+      #c { position: fixed; left: 0; top: 0; display: block; will-change: transform; }
+      #bubble { position: fixed; left: 0; top: 0; max-width: 340px; min-width: 60px; padding: 10px 14px;
+        background: #fffdf7; color: #101018; border: 2px solid #101018; border-radius: 14px;
+        box-shadow: 4px 4px 0 #101018; font-size: 14px; line-height: 1.35;
+        transform: translate(-50%, -100%); opacity: 0; pointer-events: none; transition: opacity 0.15s ease; }
+      #bubble.show { opacity: 1; pointer-events: auto; }
+      #bubble::after { content: ""; position: absolute; left: 50%; bottom: -12px; width: 0; height: 0;
+        transform: translateX(-50%); border: 10px solid transparent; border-top-color: #101018; border-bottom: 0; }
+      #bubble::before { content: ""; position: absolute; left: 50%; bottom: -8px; width: 0; height: 0; z-index: 1;
+        transform: translateX(-50%); border: 8px solid transparent; border-top-color: #fffdf7; border-bottom: 0; }
+      #bubble .text { white-space: pre-wrap; word-break: break-word; -webkit-user-select: text; user-select: text; }
+      #bubble input { width: 260px; border: 0; outline: 0; background: transparent; font: inherit; color: inherit; }
+      #bubble input::placeholder { color: #8a8a94; }
+      #bubble .thinking { color: #ff7a2f; letter-spacing: 2px; }
+      #bubble .hint { margin-top: 6px; font-size: 11px; color: #8a8a94; }
+    </style>
+  </head>
+  <body>
+    <canvas id="c"></canvas>
+    <div id="bubble"><div class="text"></div></div>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>

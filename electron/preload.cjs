@@ -1,0 +1,23 @@
+const { contextBridge, ipcRenderer } = require("electron");
+
+contextBridge.exposeInMainWorld("pet", {
+  setIgnoreMouse: (v) => ipcRenderer.send("pet:set-ignore-mouse", v),
+  focus: () => ipcRenderer.send("pet:focus"),
+  contextMenu: () => ipcRenderer.send("pet:context-menu"),
+  ask: (text, context) => ipcRenderer.invoke("pet:ask", text, context),
+  remind: (spec) => ipcRenderer.invoke("pet:remind", spec),
+  reminders: () => ipcRenderer.invoke("pet:reminders"),
+  focus: (minutes) => ipcRenderer.send("pet:focus", minutes),
+  mail: (context) => ipcRenderer.send("pet:mail", context),
+  saveWants: (w) => ipcRenderer.send("pet:wants", w),
+  say: (text) => ipcRenderer.invoke("pet:say", text),
+  setVariant: (name) => ipcRenderer.send("pet:variant", name),
+  setQuiet: (v) => ipcRenderer.send("pet:quiet", v),
+  stopSpeaking: () => ipcRenderer.send("pet:say-stop"),
+  transcribe: (wav) => ipcRenderer.invoke("pet:transcribe", wav),
+  quit: () => ipcRenderer.send("pet:quit"),
+  log: (msg) => ipcRenderer.send("pet:log", msg),
+  onCommand: (cb) => ipcRenderer.on("pet:command", (_e, cmd) => cb(cmd)),
+  onSpeaking: (cb) => ipcRenderer.on("pet:speaking", (_e, v) => cb(v)),
+  onWindows: (cb) => ipcRenderer.on("pet:windows", (_e, w) => cb(w)),
+});

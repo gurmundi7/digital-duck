@@ -1,0 +1,37 @@
+# Tag a version (git tag v0.1.0 && git push --tags) and this builds the signed,
+# notarized .dmg files and attaches them to a draft GitHub release.
+#
+# Repository secrets it needs:
+#   MAC_CERT_P12                 Developer ID Application certificate, base64 of the .p12
+#   MAC_CERT_PASSWORD            the .p12 password
+#   APPLE_ID                     the Apple ID that owns the certificate
+#   APPLE_APP_SPECIFIC_PASSWORD  an app-specific password for that Apple ID
+#   APPLE_TEAM_ID                the 10-character team id
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  mac:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - run: npm run release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CSC_LINK: ${{ secrets.MAC_CERT_P12 }}
+          CSC_KEY_PASSWORD: ${{ secrets.MAC_CERT_PASSWORD }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}

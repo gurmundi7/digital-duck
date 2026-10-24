@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'self'" />
+    <title>Settings</title>
+    <style>
+      :root { --ink: #101018; --paper: #fffdf7; --line: #e6e0d2; --accent: #ff7a2f; --muted: #6b6658; --warn: #8a3a10; }
+      @media (prefers-color-scheme: dark) { :root { --ink: #f3efe4; --paper: #1b1a17; --line: #3a372f; --muted: #a8a294; --warn: #ffb27a; } }
+      * { box-sizing: border-box; }
+      body { margin: 0; font: 13px/1.4 -apple-system, Helvetica, sans-serif; background: var(--paper); color: var(--ink); }
+      main { padding: 6px 22px 22px; }
+      h2 { font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); margin: 22px 0 6px; }
+      .row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 7px 0; border-bottom: 1px solid var(--line); }
+      .row:last-child { border-bottom: 0; }
+      .row > label, .row > span { flex: 1; }
+      .hint { display: block; color: var(--muted); font-size: 12px; }
+      .err { display: block; color: var(--warn); font-size: 12px; }
+      select, input[type=text], input[type=time], input[type=number] { font: inherit; color: inherit; background: transparent; padding: 4px 7px; border: 1.5px solid var(--line); border-radius: 7px; }
+      input[type=text] { width: 190px; }
+      input[type=number] { width: 72px; }
+      select { max-width: 240px; }
+      input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--accent); }
+      button { font: inherit; color: inherit; padding: 4px 11px; border: 1.5px solid var(--line); border-radius: 7px; background: transparent; cursor: pointer; }
+      button:hover { border-color: var(--accent); }
+      .levels { display: grid; gap: 6px; margin: 4px 0 2px; }
+      .level { display: flex; gap: 9px; align-items: flex-start; padding: 8px 10px; border: 1.5px solid var(--line); border-radius: 9px; cursor: pointer; }
+      .level:has(input:checked) { border-color: var(--accent); }
+      .level.danger:has(input:checked) { border-color: var(--warn); }
+      .level input { margin-top: 2px; accent-color: var(--accent); }
+      .level b { display: block; }
+      .inline { display: flex; gap: 6px; align-items: center; }
+      footer { margin-top: 22px; display: flex; justify-content: space-between; align-items: center; color: var(--muted); }
+      footer a { color: var(--muted); cursor: pointer; text-decoration: underline; }
+      #saved { opacity: 0; transition: opacity 0.2s; }
+      #saved.on { opacity: 1; }
+      [data-needs-claude].off { opacity: 0.45; pointer-events: none; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h2>Brain</h2>
+      <div class="row"><label for="model">Model<span class="hint">Haiku is quickest. Sonnet and Opus think harder and use more of your plan.</span></label>
+        <select id="model"><option value="haiku">Haiku</option><option value="sonnet">Sonnet</option><option value="opus">Opus</option></select></div>
+      <div id="brainNote" class="hint"></div>
+
+      <h2>What the duck can do</h2>
+      <div class="levels" data-needs-claude>
+        <label class="level"><input type="radio" name="access" value="chat" /><span><b>Chat only</b><span class="hint">Talks and moves. Runs nothing on your Mac.</span></span></label>
+        <label class="level"><input type="radio" name="access" value="open" /><span><b>Open apps, files and links</b><span class="hint">"Open Safari", "open google.com". It can launch things but not change or delete anything.</span></span></label>
+        <label class="level"><input type="radio" name="access" value="lookup" /><span><b>Look things up</b><span class="hint">Opening, plus searching the web and reading pages for news, weather and facts.</span></span></label>
+        <label class="level danger"><input type="radio" name="access" value="full" /><span><b>Full access</b><span class="hint">Anything Claude Code can do: run commands and scripts, control apps, change files, without asking you first. Only choose this if you trust everything you say to it, and everything it reads.</span></span></label>
+      </div>
+      <span class="err" data-err="access"></span>
+      <div class="row" data-needs-claude><label for="mcp">Use my connectors and MCP servers<span class="hint">Calendar, Gmail, Jira and other connectors on your Claude account. Slower.</span></label><input type="checkbox" id="mcp" /></div>
+      <div class="row"><span>Anthropic API key<span class="hint">Only used when Claude Code isn't installed. Kept in your Keychain.</span></span><button id="key">Set key…</button></div>
+
+      <h2>Voice</h2>
+      <div class="row"><label for="voice">Voice</label><span class="inline"><select id="voice"></select><button id="preview">Play</button></span></div>
+      <div class="row"><label for="rate">Speed<span class="hint">Words a minute, 90 to 400.</span><span class="err" data-err="rate"></span></label><input type="number" id="rate" min="90" max="400" step="10" /></div>
+      <div class="row"><label for="listen">Voice input<span class="hint">Hold the talk key and speak. Needs <code>brew install whisper.cpp</code> and a speech model.</span></label><input type="checkbox" id="listen" /></div>
+      <div class="row"><label for="hotkey">Talk key<span class="err" data-err="hotkey"></span></label><input type="text" id="hotkey" placeholder="Alt+D" /></div>
+      <div class="row"><label for="typeHotkey">Type key<span class="hint">Opens the chat bubble.</span><span class="err" data-err="typeHotkey"></span></label><input type="text" id="typeHotkey" placeholder="Alt+T" /></div>
+
+      <h2>Work</h2>
+      <div class="row"><label for="work.reminders">Reminders by chat and voice<span class="hint">"Remind me at 3 to call Sam".</span></label><input type="checkbox" id="work.reminders" /></div>
+      <div class="row"><label for="work.briefing">Morning briefing<span class="err" data-err="work.briefingTime"></span></label><span class="inline"><input type="time" id="work.briefingTime" /><input type="checkbox" id="work.briefing" /></span></div>
+      <div class="row"><label for="work.endOfDay">End-of-day recap<span class="err" data-err="work.endOfDayTime"></span></label><span class="inline"><input type="time" id="work.endOfDayTime" /><input type="checkbox" id="work.endOfDay" /></span></div>
+      <div class="row"><label for="work.prWatch">Pull request watch<span class="hint">Uses your <code>gh</code> CLI.</span></label><input type="checkbox" id="work.prWatch" /></div>
+      <div class="row"><label for="nudges.calendar">Meeting reminders from Calendar</label><input type="checkbox" id="nudges.calendar" /></div>
+      <div class="row"><label for="nudges.enabled">Nudges<span class="hint">Meetings, stretch breaks, and lines another tool writes to a file.</span></label><input type="checkbox" id="nudges.enabled" /></div>
+      <div class="row"><span>Nudges file<span class="hint" id="nudgesFile">None</span><span class="err" data-err="nudges.notificationsFile"></span></span><span class="inline"><button id="clearFile">Clear</button><button id="pickFile">Choose…</button></span></div>
+
+      <h2>Pet</h2>
+      <div class="row"><label for="pet.greetings">Greetings when you come back</label><input type="checkbox" id="pet.greetings" /></div>
+      <div class="row"><label for="pet.wants">Moods and wants<span class="hint">Naps, boredom, wanting attention.</span></label><input type="checkbox" id="pet.wants" /></div>
+      <div class="row"><label for="pet.petting">Petting<span class="hint">Stroke its head with the mouse.</span></label><input type="checkbox" id="pet.petting" /></div>
+      <div class="row"><label for="display">Lives on</label><select id="display"></select></div>
+      <div class="row"><label for="name">Your name<span class="hint">What the duck calls you.</span><span class="err" data-err="name"></span></label><input type="text" id="name" /></div>
+      <div class="row"><label for="login">Start at login</label><input type="checkbox" id="login" /></div>
+
+      <footer><a id="raw">Edit raw config…</a><span id="saved">Saved</span></footer>
+    </main>
+    <script src="settings.js"></script>
+  </body>
+</html>

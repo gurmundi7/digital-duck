@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Digital Duck</title>
+  <meta name="description" content="A free, open source robot duck that lives on your Mac. It walks, climbs your windows, falls over, gets back up and talks back. Unofficial, inspired by Pollen's Microduck." />
+  <link rel="canonical" href="https://gurmundi7.github.io/digital-duck/" />
+  <meta property="og:type" content="website" />
+  <meta property="og:title" content="Digital Duck" />
+  <meta property="og:description" content="A free robot duck that lives on your Mac. Walks, climbs your windows, falls over, talks back." />
+  <meta property="og:image" content="https://gurmundi7.github.io/digital-duck/social-preview.png" />
+  <meta property="og:url" content="https://gurmundi7.github.io/digital-duck/" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🦆</text></svg>" />
+  <style>
+    :root { --bg: #303743; --bg2: #272d38; --ink: #f3efe4; --muted: #aab2c0; --line: #434b58; --orange: #ff7a2f; --pink: #e8317a; }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--bg); color: var(--ink); font: 17px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; -webkit-font-smoothing: antialiased; }
+    a { color: inherit; }
+    .wrap { max-width: 1040px; margin: 0 auto; padding: 0 20px; }
+    header { display: flex; justify-content: space-between; align-items: center; padding: 22px 0; }
+    .brand { font-weight: 700; font-size: 20px; text-decoration: none; }
+    nav a { color: var(--muted); text-decoration: none; margin-left: 22px; font-size: 15px; }
+    nav a:hover { color: var(--ink); }
+    .hero { padding: 44px 0 10px; text-align: center; }
+    h1 { font-size: clamp(36px, 6vw, 62px); line-height: 1.05; margin: 0 0 18px; letter-spacing: -0.02em; }
+    .hero p { font-size: clamp(17px, 2.2vw, 21px); color: var(--muted); max-width: 640px; margin: 0 auto 28px; }
+    .btns { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+    .btn { display: inline-block; padding: 14px 26px; border-radius: 12px; font-weight: 700; text-decoration: none; font-size: 17px; }
+    .btn.primary { background: var(--orange); color: #1a1208; }
+    .btn.primary:hover { background: #ff8f4f; }
+    .btn.ghost { border: 2px solid var(--line); }
+    .btn.ghost:hover { border-color: var(--muted); }
+    .fine { color: var(--muted); font-size: 14px; margin-top: 16px; }
+    .demo { margin: 40px auto 0; max-width: 900px; border-radius: 16px; overflow: hidden; border: 1px solid var(--line); box-shadow: 0 30px 80px rgba(0, 0, 0, 0.35); background: var(--bg2); }
+    .demo img { display: block; width: 100%; height: auto; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; margin: 60px 0; }
+    .card { background: var(--bg2); border: 1px solid var(--line); border-radius: 14px; padding: 22px; }
+    .card .em { font-size: 28px; display: block; margin-bottom: 10px; }
+    .card h3 { margin: 0 0 6px; font-size: 18px; }
+    .card p { margin: 0; color: var(--muted); font-size: 15px; }
+    section h2 { font-size: 28px; margin: 0 0 12px; letter-spacing: -0.01em; }
+    section p { color: var(--muted); max-width: 720px; }
+    .two { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 40px; margin-bottom: 56px; }
+    .credit { background: var(--bg2); border-radius: 14px; padding: 24px 26px; margin: 0 0 60px; border-left: 4px solid var(--pink); }
+    .credit p { max-width: none; }
+    .credit p:last-child { margin-bottom: 0; }
+    footer { border-top: 1px solid var(--line); padding: 28px 0 56px; color: var(--muted); font-size: 14px; display: flex; flex-wrap: wrap; gap: 10px 24px; justify-content: space-between; }
+    footer a { color: var(--muted); }
+    footer a:hover { color: var(--ink); }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <a class="brand" href="#">Digital Duck 🦆</a>
+      <nav>
+        <a href="#features">What it does</a>
+        <a href="https://github.com/gurmundi7/digital-duck">GitHub</a>
+      </nav>
+    </header>
+
+    <section class="hero">
+      <h1>A robot duck that lives on your Mac.</h1>
+      <p>It walks along the bottom of your screen, climbs your windows, falls over, gets back up, and talks back. Free and open source.</p>
+      <div class="btns">
+        <a class="btn primary" href="https://github.com/gurmundi7/digital-duck/releases/latest">Download for Mac</a>
+        <a class="btn ghost" href="https://github.com/gurmundi7/digital-duck">View on GitHub</a>
+      </div>
+      <p class="fine">macOS 12 or later · Apple Silicon and Intel · Unofficial, inspired by Pollen's Microduck</p>
+      <div class="demo"><img src="demo.gif" alt="Digital Duck talking, falling and getting up, roller skating, changing colours, then opening Calculator on a Mac desktop" width="900" height="565" /></div>
+    </section>
+
+    <section id="features" class="grid">
+      <div class="card"><span class="em">🚶</span><h3>Walks your desktop</h3><p>Wanders the bottom of the screen and looks up when your cursor comes near. Clicks go straight through to your apps.</p></div>
+      <div class="card"><span class="em">🪟</span><h3>Climbs your windows</h3><p>The top of every window is a ledge. It hops up, rides along when you drag, and falls when you close it.</p></div>
+      <div class="card"><span class="em">🤸</span><h3>Falls over, gets back up</h3><p>Pick it up and drop it. It tumbles and stands up on its own, the way the real robot does.</p></div>
+      <div class="card"><span class="em">💬</span><h3>Talks back</h3><p>Click it and chat. It answers in a speech bubble and out loud, and does what you ask: sit, dance, roller skates, beach ball, a five minute nap.</p></div>
+      <div class="card"><span class="em">🖥️</span><h3>Does things on your Mac, if you let it</h3><p>Off by default. Turn on a level in Settings and it can open apps and links, look things up, or run anything Claude Code can.</p></div>
+      <div class="card"><span class="em">😴</span><h3>Has moods</h3><p>Gets tired and naps, gets bored and asks for attention, sulks if ignored, likes being petted. Dances when music plays.</p></div>
+    </section>
+
+    <div class="two">
+      <section>
+        <h2>Chat needs a brain</h2>
+        <p>Chat runs through Claude: your Claude Code CLI if it is installed, or an Anthropic API key. Without either it still walks, climbs and plays. It just can't talk back.</p>
+      </section>
+      <section>
+        <h2>Private by design</h2>
+        <p>No accounts, no analytics, no telemetry. By default it runs nothing on your Mac. What it reads and what it sends is spelled out in the <a href="https://github.com/gurmundi7/digital-duck#privacy">README</a>.</p>
+      </section>
+    </div>
+
+    <section class="credit">
+      <h2>A real robot, in simulation</h2>
+      <p>Under the feathers it is <a href="https://www.pollen-robotics.com/">Pollen Robotics</a>' Microduck: their MuJoCo model and their trained walking policies, from the open source <a href="https://huggingface.co/spaces/pollen-robotics/microduck-simulator">Microduck simulator</a> by Pollen Robotics and Hugging Face. Every step is a trained robot policy driving a physics simulation.</p>
+      <p>Digital Duck is an independent project. It is not affiliated with or endorsed by Pollen Robotics or Hugging Face. If you like the duck, get the real one.</p>
+    </section>
+
+    <footer>
+      <span>Made by Gurpreet Singh · <a href="https://www.instagram.com/gurbuilds/">Instagram</a> · <a href="https://x.com/gurbuilds">X</a> · @gurbuilds</span>
+      <span><a href="https://github.com/gurmundi7/digital-duck">GitHub</a> · <a href="https://github.com/gurmundi7/digital-duck/blob/main/LICENSE">Apache 2.0</a> · <a href="https://github.com/gurmundi7/digital-duck/issues">Report a bug</a></span>
+    </footer>
+  </div>
+</body>
+</html>

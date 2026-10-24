@@ -1,0 +1,88 @@
+{
+  "name": "digital-duck",
+  "productName": "Digital Duck",
+  "version": "0.1.0",
+  "private": true,
+  "description": "An unofficial desktop pet inspired by Pollen's Microduck.",
+  "license": "Apache-2.0",
+  "author": "Gurpreet Singh",
+  "repository": "github:gurmundi7/digital-duck",
+  "homepage": "https://gurmundi7.github.io/digital-duck/",
+  "bugs": "https://github.com/gurmundi7/digital-duck/issues",
+  "main": "electron/main.cjs",
+  "type": "module",
+  "scripts": {
+    "build": "vite build",
+    "start": "npm run build && open -n node_modules/electron/dist/Electron.app --args \"$PWD\"",
+    "start:log": "npm run build && ./node_modules/.bin/electron . 2>&1 | tee -a state/duck.log",
+    "dev": "vite",
+    "electron": "electron .",
+    "test": "node --test \"test/**/*.test.cjs\"",
+    "helpers": "scripts/build-helpers.sh",
+    "dist": "scripts/check-public.sh && npm run build && npm run helpers && electron-builder --mac --publish never",
+    "release": "scripts/check-public.sh && npm run build && npm run helpers && electron-builder --mac --publish always",
+    "postinstall": "scripts/patch-electron-plist.sh"
+  },
+  "devDependencies": {
+    "@mujoco/mujoco": "3.11.0",
+    "electron": "^38.8.6",
+    "electron-builder": "26.17.0",
+    "onnxruntime-web": "1.27.0",
+    "three": "0.164.1",
+    "vite": "6.4.5"
+  },
+  "build": {
+    "appId": "com.gurpreetmundi.digitalduck",
+    "productName": "Digital Duck",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**",
+      "electron/**",
+      "package.json",
+      "!electron/*.swift"
+    ],
+    "extraResources": [
+      {
+        "from": "build/bin",
+        "to": "bin"
+      }
+    ],
+    "mac": {
+      "category": "public.app-category.entertainment",
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "arm64",
+            "x64"
+          ]
+        }
+      ],
+      "hardenedRuntime": true,
+      "gatekeeperAssess": false,
+      "entitlements": "build/entitlements.mac.plist",
+      "entitlementsInherit": "build/entitlements.mac.plist",
+      "notarize": true,
+      "extendInfo": {
+        "LSUIElement": true,
+        "NSCalendarsUsageDescription": "Digital Duck reads your calendar to remind you before meetings, if you turn that on.",
+        "NSCalendarsFullAccessUsageDescription": "Digital Duck reads your calendar to remind you before meetings, if you turn that on.",
+        "NSAppleEventsUsageDescription": "Digital Duck checks whether Music or Spotify is playing so it can dance along.",
+        "NSMicrophoneUsageDescription": "Digital Duck listens when you press the talk key, if you turn voice input on."
+      }
+    },
+    "dmg": {
+      "title": "Digital Duck ${version}"
+    },
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "gurmundi7",
+        "repo": "digital-duck",
+        "releaseType": "draft"
+      }
+    ]
+  }
+}
