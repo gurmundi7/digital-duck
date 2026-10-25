@@ -117,6 +117,7 @@ sim/        Pollen's simulator source and assets, unchanged (Apache 2.0)
   - start at login through a LaunchAgent (checkouts) or a macOS login item
   - voice input through `brew install whisper.cpp`
   - Music and Spotify detection through AppleScript
+- **More brains.** Today the duck talks through Claude Code or an Anthropic API key. Next: a local model through Ollama, OpenAI's Codex CLI, OpenRouter, and any OpenAI-compatible endpoint, each as a pick in Settings → Brain. The app-running levels stay tied to an agent CLI that can take tool permissions.
 
 ## Contributing
 
