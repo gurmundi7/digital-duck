@@ -4,6 +4,7 @@ release
 build/bin
 .DS_Store
 state/
+.env*
 # Private skins, never published. See renderer/src/skins.js.
 private
 build/obj

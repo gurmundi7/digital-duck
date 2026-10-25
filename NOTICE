@@ -6,7 +6,17 @@ Hugging Face: the Microduck simulator (MuJoCo model, trained policies, robot
 meshes, voices and sounds, and simulator source), from
 https://huggingface.co/spaces/pollen-robotics/microduck-simulator
 Licensed under the Apache License, Version 2.0. That source is kept unchanged
-in sim/, with its license in sim/LICENSE-pollen-simulator.
+in sim/, with its license in sim/LICENSE-pollen-simulator. The robot model and
+the trained walking policies originate from
+https://github.com/pollen-robotics/microduck and
+https://github.com/pollen-robotics/microduck_rl.
+
+Third-party software shipped in the application:
+- MuJoCo (WebAssembly build), Google DeepMind, Apache License 2.0
+- three.js, MIT License
+- ONNX Runtime Web, Microsoft, MIT License
+- Electron, MIT License
+- Sound effects in the simulator from Kenney.nl, CC0
 
 Microduck is a robot by Pollen Robotics. Digital Duck is an independent
 project and is not affiliated with or endorsed by Pollen Robotics or Hugging Face.

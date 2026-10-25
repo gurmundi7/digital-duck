@@ -222,7 +222,7 @@ function buildMenu() {
     { label: "Reset duck", click: () => send({ type: "reset" }) },
     { label: "Open notebook…", click: () => { if (!fs.existsSync(MEMORY_PATH)) fs.writeFileSync(MEMORY_PATH, ""); spawn("open", ["-t", MEMORY_PATH]); } },
     { label: "Show config in Finder", click: () => shell.showItemInFolder(CONFIG_PATH) },
-    { label: "Open DevTools", click: () => win?.webContents.openDevTools({ mode: "detach" }) },
+    ...(app.isPackaged ? [] : [{ label: "Open DevTools", click: () => win?.webContents.openDevTools({ mode: "detach" }) }]),
     { type: "separator" },
     { label: `Quit ${APP_NAME}`, accelerator: "Command+Q", click: () => app.quit() },
   ]);
@@ -626,10 +626,11 @@ function transcribe(wavBuffer) {
   return new Promise((resolve) => {
     const { bin, model } = resolveWhisper();
     if (!bin) return resolve({ text: "", error: "whisper-cli not installed (brew install whisper.cpp)" });
-    if (!model) return resolve({ text: "", error: "speech model missing in state/models" });
+    if (!model) return resolve({ text: "", error: "speech model missing: put ggml-base.en.bin in models/ inside the config folder" });
     const wav = path.join(STATE_DIR, "utterance.wav");
     fs.writeFileSync(wav, Buffer.from(wavBuffer));
-    execFile(bin, ["-m", model, "-f", wav, "-l", "en", "-nt", "--no-prints", "-t", "4", "--prompt", "Hey duck, Microduck, quack."], { timeout: 30000 }, (err, stdout, stderr) => {
+    execFile(bin, ["-m", model, "-f", wav, "-l", "en", "-nt", "--no-prints", "-t", "4", "--prompt", "Hey duck, Digital Duck, quack."], { timeout: 30000 }, (err, stdout, stderr) => {
+      try { fs.unlinkSync(wav); } catch { /* already gone */ }
       if (err) { console.error("[whisper]", (stderr || err.message).slice(0, 300)); return resolve({ text: "", error: "transcription failed" }); }
       const text = String(stdout).split("\n").map((l) => l.trim()).filter(Boolean).join(" ")
         .replace(/\[[^\]]*\]|\([^)]*\)/g, "").replace(/\s+/g, " ").trim(); // drop [BLANK_AUDIO] style tags
@@ -687,7 +688,8 @@ app.whenReady().then(() => {
   for (const ev of ["display-added", "display-removed", "display-metrics-changed"]) {
     screen.on(ev, () => setTimeout(() => placeWindow({ reload: true }), 500));
   }
-  app.on("second-instance", () => { win?.show(); send({ type: "quack" }); });
+  // Opening the app again while a duck runs: answer on screen, since there is no Dock icon or window to notice.
+  app.on("second-instance", () => { win?.show(); send({ type: "quack" }); send({ type: "say", value: "Already here. One duck is plenty." }); });
   console.log(`[duck] brain: ${CLAUDE_BIN ?? "Anthropic API"} (${config.model}), voice: ${config.voice}, whisper: ${resolveWhisper().bin ?? "missing"} / ${resolveWhisper().model ? "model ok" : "no model"}`);
   console.log(`[duck] displays: ${screen.getAllDisplays().map((d) => `${d.id}=${displayLabel(d)}`).join("; ")}; using ${targetDisplay().id} bounds ${JSON.stringify(win.getBounds())}`);
 });
@@ -695,7 +697,7 @@ app.whenReady().then(() => {
 app.on("window-all-closed", () => app.quit());
 app.on("before-quit", () => { app.isQuitting = true; stopSaying(); globalShortcut.unregisterAll(); winlistChild?.kill(); nudges?.stop(); workday?.stop(); reminders?.stop(); prwatch?.stop(); presence?.stop(); });
 
-// Debug: `kill -USR2 <pid>` writes state/snap.png and logs the duck's state.
+// Debug: `kill -USR2 <pid>` writes snap.png to the config folder and logs the duck's state.
 process.on("SIGUSR2", async () => {
   if (!win) return;
   try {
@@ -711,7 +713,7 @@ process.on("SIGUSR2", async () => {
   }
 });
 
-// Debug: `kill -USR1 <pid>` runs state/debug.js inside the renderer and logs its result.
+// Debug: `kill -USR1 <pid>` runs debug.js from the config folder inside the renderer and logs its result.
 // A first line of "// target: settings" runs it in the open Settings window instead.
 process.on("SIGUSR1", async () => {
   if (!win) return;

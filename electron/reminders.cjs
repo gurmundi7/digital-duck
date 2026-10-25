@@ -1,5 +1,5 @@
 // Reminders the owner sets by chat or voice ("remind me at 3 to call Sam",
-// "in 20 minutes"). Kept in state/reminders.json so they survive restarts.
+// "in 20 minutes"). Kept in reminders.json in the config folder so they survive restarts.
 const fs = require("node:fs");
 
 const WORD_NUM = { a: 1, an: 1, one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10, fifteen: 15, twenty: 20, thirty: 30, forty: 40, fortyfive: 45, sixty: 60, half: 0.5, quarter: 0.25 };

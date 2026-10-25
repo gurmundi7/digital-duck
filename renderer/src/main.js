@@ -128,7 +128,7 @@ const ballShadow = shadow.clone(); ballShadow.scale.set(0.45, 0.45, 1); ballShad
 const audio = createAudio();
 const sim = await createPetSim({ halfX, halfY, onFootstep: (u) => audio.step(u), onLog: log });
 scene.add(sim.rig.placer);
-log("microduck ready");
+log("duck ready");
 
 const bubble = createBubble({
   onSubmit: (text) => ask(text),
@@ -649,4 +649,4 @@ pet?.setIgnoreMouse(true);
 gateOpen = false;
 
 
-window.duck = { sim, behaviour, bubble, audio, ask, duckScreen, startListening, stopListening, computeLedges, handleCommand, get wants() { return wants; }, get windows() { return lastWindows; } };
+window.duck = { sim, behaviour, bubble, audio, scene, camera, renderer, THREE, ask, duckScreen, startListening, stopListening, computeLedges, handleCommand, get wants() { return wants; }, get windows() { return lastWindows; } };

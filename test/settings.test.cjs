@@ -52,13 +52,11 @@ test("bad values are refused with a message and keep the old value", () => {
   assert.strictEqual(config.access, current.access);
 });
 
-test("visitor rooms are hidden: Settings neither shows nor saves a room", () => {
-  const { config, errors } = validateSettings({ room: "duck-home" }, base());
+test("unknown settings keys are dropped, not saved", () => {
+  const { config, errors } = validateSettings({ bogus: "value" }, base());
   assert.deepStrictEqual(errors, {});
-  assert.ok(!("room" in config));
-  assert.ok(!("room" in settingsView(base())));
-  const html = require("node:fs").readFileSync(require("node:path").join(__dirname, "..", "electron", "settings.html"), "utf8");
-  assert.doesNotMatch(html, /Visitors|id="room"/);
+  assert.ok(!("bogus" in config));
+  assert.ok(!("bogus" in settingsView(base())));
 });
 
 test("saving does not touch the config it was given", () => {

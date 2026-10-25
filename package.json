@@ -14,7 +14,7 @@
   "scripts": {
     "build": "vite build",
     "start": "npm run build && open -n node_modules/electron/dist/Electron.app --args \"$PWD\"",
-    "start:log": "npm run build && ./node_modules/.bin/electron . 2>&1 | tee -a state/duck.log",
+    "start:log": "mkdir -p state && npm run build && ./node_modules/.bin/electron . 2>&1 | tee -a state/duck.log",
     "dev": "vite",
     "electron": "electron .",
     "test": "node --test \"test/**/*.test.cjs\"",
@@ -50,6 +50,7 @@
       }
     ],
     "mac": {
+      "icon": "build/icon.icns",
       "category": "public.app-category.entertainment",
       "target": [
         {

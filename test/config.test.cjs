@@ -17,9 +17,7 @@ test("Microduck stays out of every name the app shows", () => {
   assert.strictEqual(pkg.build.productName, APP_NAME);
 });
 
-// The private checkout keeps its own README next to the skins overlay.
-const PRIVATE_CHECKOUT = fs.existsSync(path.join(__dirname, "..", "private-skins")) && "private checkout";
-test("the README opens with the unofficial line", { skip: PRIVATE_CHECKOUT }, () => {
+test("the README opens with the unofficial line", () => {
   const readme = fs.readFileSync(path.join(__dirname, "..", "README.md"), "utf8");
   assert.match(readme, /^# Digital Duck\n\nAn unofficial desktop pet inspired by Pollen's Microduck\./);
   assert.match(readme, /not affiliated with or endorsed by Pollen Robotics or Hugging Face/);

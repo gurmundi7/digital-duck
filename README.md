@@ -63,6 +63,7 @@ Each of these is a switch in Settings:
 - **Nudges.** Meeting reminders, stretch breaks, and lines another tool appends to a JSONL file (pick the file in Settings; one `{"message", "source"}` object per line).
 - **Pull request watch.** Uses your `gh` CLI to tell you when checks go red or green, or a review lands.
 - **Morning briefing and end-of-day recap.**
+- **Connectors and MCP servers.** Lets Claude Code use whatever your Claude account has linked (Calendar, Gmail, Slack, Jira and so on) and any servers under `mcpServers` in the config, so the duck can answer from them. Needs Claude Code.
 
 Everything is saved to `~/Library/Application Support/Digital Duck/config.json`. **Edit raw config…** at the bottom of Settings opens it.
 
@@ -72,6 +73,7 @@ What it reads, all on your Mac:
 
 - The position and app name of your on-screen windows, to find ledges. No window titles or contents.
 - How long you have been idle and whether the screen is locked, to greet you and pace itself.
+- Your first name from your macOS account, to call you by it. Change it under Settings → Your name.
 - Whether Music or Spotify is playing, so it can dance. macOS asks first.
 - Your calendar, only with meeting reminders on. macOS asks first.
 - Your open pull requests through `gh`, only with pull request watch on.
@@ -81,6 +83,7 @@ What it sends:
 
 - **Chat** goes to Anthropic, through your Claude Code CLI or your API key: what you type or say, a short context line (date, time, how the duck feels), its character description, and its notebook of things you asked it to remember. Nothing else.
 - **Look things up and Full access** let it search the web through Claude Code, and with Full access, read anything on your Mac it decides it needs to answer you.
+- **Connectors**, only with that switch on: Claude Code can read whatever your linked connectors can reach, and the morning briefing asks it about your mail and meetings.
 
 No analytics, no telemetry, no accounts. Its notebook, reminders and chat history stay in the config folder.
 
@@ -121,6 +124,6 @@ Bug reports, "can it do X?" ideas and pull requests are welcome. See [CONTRIBUTI
 
 ## Credits and license
 
-The robot, its model, policies, meshes, voices and the simulator are by [Pollen Robotics](https://www.pollen-robotics.com/) and [Hugging Face](https://huggingface.co/spaces/pollen-robotics/microduck-simulator), under Apache 2.0 (`sim/LICENSE-pollen-simulator`). Microduck is Pollen Robotics' robot. Digital Duck is not affiliated with or endorsed by Pollen Robotics or Hugging Face. If you like the duck, get the real one.
+The robot, its model, policies, meshes, voices and the simulator are by [Pollen Robotics](https://www.pollen-robotics.com/) and [Hugging Face](https://huggingface.co/spaces/pollen-robotics/microduck-simulator), under Apache 2.0 (`sim/LICENSE-pollen-simulator`). The model and the walking policies come from [pollen-robotics/microduck](https://github.com/pollen-robotics/microduck) and [pollen-robotics/microduck_rl](https://github.com/pollen-robotics/microduck_rl). Physics by [MuJoCo](https://github.com/google-deepmind/mujoco), rendering by [three.js](https://threejs.org/), policies run on [ONNX Runtime Web](https://onnxruntime.ai/), all inside [Electron](https://www.electronjs.org/). Microduck is Pollen Robotics' robot. Digital Duck is not affiliated with or endorsed by Pollen Robotics or Hugging Face. If you like the duck, get the real one.
 
 Digital Duck is Apache 2.0. See `LICENSE` and `NOTICE`.
