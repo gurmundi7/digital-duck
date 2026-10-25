@@ -8,7 +8,7 @@ A small robot duck that lives along the bottom of your Mac screen. It walks, hop
 
 Under the feathers it is [Pollen Robotics](https://www.pollen-robotics.com/)' Microduck robot in simulation: their MuJoCo model and their trained walking policies, from the open source [Microduck simulator](https://huggingface.co/spaces/pollen-robotics/microduck-simulator) by Pollen Robotics and Hugging Face. Every step is a trained robot policy driving a physics simulation, not a canned animation.
 
-Free, open source, Mac. [Download](https://github.com/gurmundi7/digital-duck/releases/latest) · [Website](https://gurmundi7.github.io/digital-duck/) · [Report a bug or ask for a trick](https://github.com/gurmundi7/digital-duck/issues)
+Free, open source under [Apache 2.0](LICENSE), Mac. [Download](https://github.com/gurmundi7/digital-duck/releases/latest) · [Website](https://gurmundi7.github.io/digital-duck/) · [Report a bug or ask for a trick](https://github.com/gurmundi7/digital-duck/issues)
 
 Follow the duck: [@gurbuilds on Instagram](https://www.instagram.com/gurbuilds/) · [@gurbuilds on X](https://x.com/gurbuilds)
 
