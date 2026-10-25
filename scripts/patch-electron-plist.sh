@@ -1,4 +1,4 @@
-#!/bin/zsh
+#!/bin/sh
 # The dev Electron.app ships without the usage strings macOS requires before
 # it will even ask for Calendar or Apple Events (osascript) access. Add them
 # and re-sign ad hoc. Run after every `npm install` (postinstall does).
