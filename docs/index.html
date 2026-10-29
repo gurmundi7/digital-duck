@@ -2,100 +2,127 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <title>Digital Duck</title>
-  <meta name="description" content="A free, open source robot duck that lives on your Mac. It walks, climbs your windows, falls over, gets back up and talks back. Unofficial, inspired by Pollen's Microduck." />
+  <meta name="description" content="A free, open source robot duck that lives on your Mac. It walks, climbs your windows, falls and gets back up, talks back, plays with your music and goes quiet on calls. Unofficial, inspired by Pollen's Microduck." />
   <link rel="canonical" href="https://gurmundi7.github.io/digital-duck/" />
   <link rel="icon" type="image/png" href="icon.png" />
   <meta property="og:type" content="website" />
   <meta property="og:title" content="Digital Duck" />
-  <meta property="og:description" content="A free robot duck that lives on your Mac. Walks, climbs your windows, falls over, talks back." />
+  <meta property="og:description" content="A free robot duck that lives on your Mac. Walks, climbs your windows, gets back up, talks back." />
   <meta property="og:image" content="https://gurmundi7.github.io/digital-duck/social-preview.png" />
   <meta property="og:url" content="https://gurmundi7.github.io/digital-duck/" />
   <meta name="twitter:card" content="summary_large_image" />
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🦆</text></svg>" />
   <style>
-    :root { --bg: #303743; --bg2: #272d38; --ink: #f3efe4; --muted: #aab2c0; --line: #434b58; --orange: #ff7a2f; --pink: #e8317a; }
+    :root {
+      --bg: #14161d; --bg2: #1b1e27; --line: #2a2e3a; --ink: #f4f1ea; --muted: #a3a9b6;
+      --accent: #ff8a3d; --accent-ink: #1c1006; --glow: rgba(255, 138, 61, 0.16);
+      --sans: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Helvetica, Arial, sans-serif;
+      color-scheme: dark;
+    }
     * { box-sizing: border-box; }
-    body { margin: 0; background: var(--bg); color: var(--ink); font: 17px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; -webkit-font-smoothing: antialiased; }
+    html { -webkit-text-size-adjust: 100%; }
+    body {
+      margin: 0; background: var(--bg); color: var(--ink);
+      font: 17px/1.55 var(--sans); -webkit-font-smoothing: antialiased;
+      background-image: radial-gradient(900px 520px at 70% 8%, var(--glow), transparent 70%);
+      background-repeat: no-repeat;
+    }
     a { color: inherit; }
-    .wrap { max-width: 1040px; margin: 0 auto; padding: 0 20px; }
-    header { display: flex; justify-content: space-between; align-items: center; padding: 22px 0; }
-    .brand { font-weight: 700; font-size: 20px; text-decoration: none; }
-    nav a { color: var(--muted); text-decoration: none; margin-left: 22px; font-size: 15px; }
-    nav a:hover { color: var(--ink); }
-    .hero { padding: 44px 0 10px; text-align: center; }
-    h1 { font-size: clamp(36px, 6vw, 62px); line-height: 1.05; margin: 0 0 18px; letter-spacing: -0.02em; }
-    .hero p { font-size: clamp(17px, 2.2vw, 21px); color: var(--muted); max-width: 640px; margin: 0 auto 28px; }
+    .wrap { max-width: 1080px; margin: 0 auto; padding-left: max(20px, env(safe-area-inset-left, 0px)); padding-right: max(20px, env(safe-area-inset-right, 0px)); }
+    header { display: flex; justify-content: space-between; align-items: center; padding-block: 22px; gap: 16px; }
+    .brand { font-weight: 700; font-size: 19px; text-decoration: none; letter-spacing: -0.01em; }
+    nav { display: flex; gap: 22px; flex-wrap: wrap; }
+    nav a { color: var(--muted); text-decoration: none; font-size: 15px; }
+    nav a:hover, nav a:focus-visible { color: var(--ink); }
+    .hero { padding-block: 36px 8px; display: grid; gap: 22px; justify-items: center; text-align: center; }
+    .kicker { font-size: 12px; font-weight: 600; letter-spacing: 0.22em; text-transform: uppercase; color: var(--accent); }
+    h1 { font-size: clamp(40px, 7vw, 76px); line-height: 1.02; letter-spacing: -0.035em; margin: 0; max-width: 12em; text-wrap: balance; font-weight: 700; }
+    h1 em, h2 em { font-style: normal; color: var(--accent); }
+    .sub { font-size: clamp(17px, 2.1vw, 21px); color: var(--muted); max-width: 36em; margin: 0; text-wrap: balance; }
     .btns { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
-    .btn { display: inline-block; padding: 14px 26px; border-radius: 12px; font-weight: 700; text-decoration: none; font-size: 17px; }
-    .btn.primary { background: var(--orange); color: #1a1208; }
-    .btn.primary:hover { background: #ff8f4f; }
-    .btn.ghost { border: 2px solid var(--line); }
+    .btn { display: inline-block; padding: 14px 24px; border-radius: 999px; font-weight: 650; text-decoration: none; font-size: 17px; }
+    .btn.primary { background: var(--accent); color: var(--accent-ink); }
+    .btn.primary:hover { background: #ff9d5c; }
+    .btn.ghost { border: 1.5px solid var(--line); }
     .btn.ghost:hover { border-color: var(--muted); }
-    .fine { color: var(--muted); font-size: 14px; margin-top: 16px; }
-    .demo { margin: 40px auto 0; max-width: 900px; border-radius: 16px; overflow: hidden; border: 1px solid var(--line); box-shadow: 0 30px 80px rgba(0, 0, 0, 0.35); background: var(--bg2); }
-    .demo img { display: block; width: 100%; height: auto; }
-    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; margin: 60px 0; }
-    .card { background: var(--bg2); border: 1px solid var(--line); border-radius: 14px; padding: 22px; }
-    .card .em { font-size: 28px; display: block; margin-bottom: 10px; }
-    .card h3 { margin: 0 0 6px; font-size: 18px; }
-    .card p { margin: 0; color: var(--muted); font-size: 15px; }
-    section h2 { font-size: 28px; margin: 0 0 12px; letter-spacing: -0.01em; }
-    section p { color: var(--muted); max-width: 720px; }
-    .two { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 40px; margin-bottom: 56px; }
-    .credit { background: var(--bg2); border-radius: 14px; padding: 24px 26px; margin: 0 0 60px; border-left: 4px solid var(--pink); }
-    .credit p { max-width: none; }
-    .credit p:last-child { margin-bottom: 0; }
-    footer { border-top: 1px solid var(--line); padding: 28px 0 56px; color: var(--muted); font-size: 14px; display: flex; flex-wrap: wrap; gap: 10px 24px; justify-content: space-between; }
+    .btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+    .fine { color: var(--muted); font-size: 14px; margin: 0; }
+    .stage { width: 100%; max-width: 980px; margin-top: 18px; border-radius: 18px; overflow: hidden; border: 1px solid var(--line); box-shadow: 0 40px 100px rgba(0, 0, 0, 0.45); background: var(--bg2); aspect-ratio: 2 / 1; }
+    .stage video, .clip video { display: block; width: 100%; height: 100%; object-fit: cover; }
+    section.block { padding-block: 72px 0; display: grid; gap: 28px; }
+    h2 { font-size: clamp(30px, 4.4vw, 46px); line-height: 1.05; letter-spacing: -0.03em; margin: 0; text-wrap: balance; font-weight: 700; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 22px; }
+    .clip { display: grid; gap: 12px; margin: 0; }
+    .clip .frame { border-radius: 14px; overflow: hidden; border: 1px solid var(--line); background: var(--bg2); aspect-ratio: 3 / 2; }
+    .clip figcaption { color: var(--muted); font-size: 16px; }
+    .clip figcaption b { color: var(--ink); font-weight: 650; }
+    .also { color: var(--muted); max-width: 46em; margin: 0; }
+    .two { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 40px; }
+    .two h3 { font-size: 22px; margin: 0 0 8px; letter-spacing: -0.01em; }
+    .two p { color: var(--muted); margin: 0; }
+    .credit { margin-top: 72px; background: var(--bg2); border: 1px solid var(--line); border-radius: 18px; padding: 28px; display: grid; gap: 12px; }
+    .credit p { color: var(--muted); margin: 0; max-width: 60em; }
+    footer { margin-top: 56px; border-top: 1px solid var(--line); padding-block: 28px 56px; color: var(--muted); font-size: 14px; display: flex; flex-wrap: wrap; gap: 10px 24px; justify-content: space-between; }
     footer a { color: var(--muted); }
     footer a:hover { color: var(--ink); }
+    @media (max-width: 560px) { nav a.hide-sm { display: none; } .hero { padding-top: 16px; } section.block { padding-top: 56px; } }
   </style>
 </head>
 <body>
   <div class="wrap">
     <header>
-      <a class="brand" href="./">Digital Duck 🦆</a>
+      <a class="brand" href="./">Digital Duck</a>
       <nav>
         <a href="#features">What it does</a>
+        <a class="hide-sm" href="#privacy">Privacy</a>
         <a href="https://github.com/gurmundi7/digital-duck">GitHub</a>
       </nav>
     </header>
 
     <section class="hero">
-      <h1>A robot duck that lives on your Mac.</h1>
-      <p>It walks along the bottom of your screen, climbs your windows, falls over, gets back up, and talks back. Free and open source.</p>
+      <div class="kicker">Free for Mac · Open source</div>
+      <h1>A robot duck that lives on your <em>Mac.</em></h1>
+      <p class="sub">It walks along the bottom of your screen, climbs your windows, falls over and gets back up, and talks back.</p>
       <div class="btns">
         <a class="btn primary" href="https://github.com/gurmundi7/digital-duck/releases/latest">Download for Mac</a>
         <a class="btn ghost" href="https://github.com/gurmundi7/digital-duck">View on GitHub</a>
       </div>
       <p class="fine">macOS 12 or later · Apple Silicon and Intel · Unofficial, inspired by Pollen's Microduck</p>
-      <div class="demo"><img src="demo.gif" alt="Digital Duck talking, falling and getting up, roller skating, changing colours, then opening Calculator on a Mac desktop" width="900" height="565" /></div>
+      <div class="stage">
+        <video src="clips/hero.mp4" poster="clips/hero.jpg" autoplay muted loop playsinline aria-label="A small white robot duck walking along the top edge of a window on a Mac desktop, tumbling off and climbing back up"></video>
+      </div>
     </section>
 
-    <section id="features" class="grid">
-      <div class="card"><span class="em">🚶</span><h3>Walks your desktop</h3><p>Wanders the bottom of the screen and looks up when your cursor comes near. Clicks go straight through to your apps.</p></div>
-      <div class="card"><span class="em">🪟</span><h3>Climbs your windows</h3><p>The top of every window is a ledge. It hops up, rides along when you drag, and falls when you close it.</p></div>
-      <div class="card"><span class="em">🤸</span><h3>Falls over, gets back up</h3><p>Pick it up and drop it. It tumbles and stands up on its own, the way the real robot does.</p></div>
-      <div class="card"><span class="em">💬</span><h3>Talks back</h3><p>Click it and chat. It answers in a speech bubble and out loud, and does what you ask: sit, dance, roller skates, beach ball, a five minute nap.</p></div>
-      <div class="card"><span class="em">🖥️</span><h3>Does things on your Mac, if you let it</h3><p>Off by default. Turn on a level in Settings and it can open apps and links, look things up, or run anything Claude Code can.</p></div>
-      <div class="card"><span class="em">😴</span><h3>Has moods</h3><p>Gets tired and naps, gets bored and asks for attention, sulks if ignored, likes being petted. Dances when music plays.</p></div>
+    <section class="block" id="features">
+      <h2>It does <em>things.</em></h2>
+      <div class="grid">
+        <figure class="clip"><div class="frame"><video src="clips/walks-climbs.mp4" poster="clips/walks-climbs.jpg" autoplay muted loop playsinline preload="metadata" aria-label="The duck hopping onto a window and walking along its top edge"></video></div><figcaption><b>It lives on your desktop.</b> The top of every window is a ledge it can hop onto. Clicks go straight through to your apps.</figcaption></figure>
+        <figure class="clip"><div class="frame"><video src="clips/gets-up.mp4" poster="clips/gets-up.jpg" autoplay muted loop playsinline preload="metadata" aria-label="The duck falling over and standing back up"></video></div><figcaption><b>It gets back up.</b> Pick it up and drop it. It finds its feet on its own, like the real robot.</figcaption></figure>
+        <figure class="clip"><div class="frame"><video src="clips/on-a-call.mp4" poster="clips/on-a-call.jpg" autoplay muted loop playsinline preload="metadata" aria-label="The duck putting on headphones and sitting quietly while an On a call label shows"></video></div><figcaption><b>It knows you're on a call.</b> Headphones on, music paused, not a word until you hang up.</figcaption></figure>
+        <figure class="clip"><div class="frame"><video src="clips/music.mp4" poster="clips/music.jpg" autoplay muted loop playsinline preload="metadata" aria-label="The duck dancing with music notes floating up from its head"></video></div><figcaption><b>It plays with your music.</b> Dances along, and "next song", "pause" and "what's playing?" just work.</figcaption></figure>
+        <figure class="clip"><div class="frame"><video src="clips/skates.mp4" poster="clips/skates.jpg" autoplay muted loop playsinline preload="metadata" aria-label="The duck gliding past windows on roller skates"></video></div><figcaption><b>It skates.</b> Say "put on your skates" and it swaps legs for wheels.</figcaption></figure>
+        <figure class="clip"><div class="frame"><video src="clips/colours.mp4" poster="clips/colours.jpg" autoplay muted loop playsinline preload="metadata" aria-label="The duck changing between classic, charcoal, purple and blue"></video></div><figcaption><b>Pick your duck.</b> Classic, charcoal, purple or blue, the four printed robots.</figcaption></figure>
+      </div>
+      <p class="also">It also talks back through Claude, opens apps and looks things up if you let it, keeps your Mac awake when you ask, naps, sulks when ignored, likes being petted and chases a beach ball.</p>
     </section>
 
-    <div class="two">
-      <section>
-        <h2>Chat needs a brain</h2>
-        <p>Chat runs through Claude: your Claude Code CLI if it is installed, or an Anthropic API key. Without either it still walks, climbs and plays. It just can't talk back.</p>
-      </section>
-      <section>
-        <h2>Private by design</h2>
-        <p>No accounts, no analytics, no telemetry. By default it runs nothing on your Mac. What it reads and what it sends is spelled out in the <a href="https://github.com/gurmundi7/digital-duck#privacy">README</a>.</p>
-      </section>
-    </div>
+    <section class="block" id="privacy">
+      <div class="two">
+        <div>
+          <h3>Chat needs a brain</h3>
+          <p>Chat runs through Claude: your Claude Code CLI if it is installed, or an Anthropic API key. Without either, it still walks, climbs and plays. It just can't talk back.</p>
+        </div>
+        <div>
+          <h3>Private by design</h3>
+          <p>No accounts, no analytics, no telemetry. A new duck runs nothing on your Mac. It checks only whether a microphone is in use, never the sound. Everything it reads and sends is listed in the <a href="https://github.com/gurmundi7/digital-duck#privacy">README</a>.</p>
+        </div>
+      </div>
+    </section>
 
     <section class="credit">
-      <h2>A real robot, in simulation</h2>
-      <p>Under the feathers it is <a href="https://www.pollen-robotics.com/">Pollen Robotics</a>' Microduck: their MuJoCo model and their trained walking policies, from the open source <a href="https://huggingface.co/spaces/pollen-robotics/microduck-simulator">Microduck simulator</a> by Pollen Robotics and Hugging Face. Every step is a trained robot policy driving a physics simulation.</p>
+      <h3 style="margin:0;font-size:22px;letter-spacing:-0.01em">A real robot, in simulation</h3>
+      <p>Under the feathers it is <a href="https://www.pollen-robotics.com/">Pollen Robotics</a>' Microduck: their MuJoCo model and their trained walking policies, from the open source <a href="https://huggingface.co/spaces/pollen-robotics/microduck-simulator">Microduck simulator</a> by Pollen Robotics and Hugging Face. Every step is a trained robot policy driving a physics simulation, not an animation.</p>
       <p>Digital Duck is an independent project. It is not affiliated with or endorsed by Pollen Robotics or Hugging Face. If you like the duck, get the real one.</p>
     </section>
 
@@ -104,5 +131,8 @@
       <span><a href="https://github.com/gurmundi7/digital-duck">GitHub</a> · <a href="https://github.com/gurmundi7/digital-duck/blob/main/LICENSE">Apache 2.0</a> · <a href="https://github.com/gurmundi7/digital-duck/issues">Report a bug</a></span>
     </footer>
   </div>
+  <script>
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) document.querySelectorAll("video").forEach(function (v) { v.removeAttribute("autoplay"); v.pause(); v.controls = true; });
+  </script>
 </body>
 </html>
