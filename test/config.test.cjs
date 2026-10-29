@@ -19,8 +19,9 @@ test("Microduck stays out of every name the app shows", () => {
 
 test("the README opens with the unofficial line", () => {
   const readme = fs.readFileSync(path.join(__dirname, "..", "README.md"), "utf8");
-  assert.match(readme, /^# Digital Duck\n\nAn unofficial desktop pet inspired by Pollen's Microduck\./);
-  assert.match(readme, /not affiliated with or endorsed by Pollen Robotics or Hugging Face/);
+  const header = readme.slice(0, readme.indexOf("\n## "));
+  assert.match(header, /<h1 align="center">Digital Duck<\/h1>/);
+  assert.match(header, /An unofficial desktop pet inspired by Pollen's Microduck\. Not affiliated with or endorsed by Pollen Robotics or Hugging Face\./);
 });
 
 test("a stranger's first launch has every outside-reading feature off", () => {
