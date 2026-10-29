@@ -21,7 +21,10 @@ const LINES = {
     nap: ["Quick nap. Wake me if the building burns.", "Zzz… five minutes."],
     napEnd: ["Hm? I'm awake. I was awake.", "Nap done. Ready."],
     deliver: ["A message for you:", "Hey {name}:", "Psst:"],
+    newMessage: ["A new message."],
     focusStart: ["Heads down for {min} minutes. I'll keep quiet.", "Focus time. Not a quack from me."],
+    awakeStart: ["Standing watch for {min} minutes. The screen stays on.", "Eyes open for {min} minutes. No sleeping on my watch."],
+    awakeHold: ["I'll keep the Mac awake until you say otherwise.", "No sleep on my watch. Say the word and I'll let it rest."],
   },
 };
 

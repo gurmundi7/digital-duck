@@ -4,7 +4,8 @@
 const MODELS = ["haiku", "sonnet", "opus"];
 const ACCESS_LEVELS = ["chat", "open", "lookup", "full"];
 const HHMM = /^([01]\d|2[0-3]):[0-5]\d$/;
-const HOTKEY = /^((Command|Cmd|Control|Ctrl|CmdOrCtrl|Alt|Option|Shift|Super)\+)+([A-Z0-9]|F([1-9]|1[0-9]|2[0-4])|Space)$/i;
+const HOTKEY = /^((Command|Cmd|Control|Ctrl|CmdOrCtrl|Alt|Option|Shift|Super)\+)+([A-Z0-9]|F([1-9]|1[0-9]|2[0-4])|Space|Up|Down|Left|Right)$/i;
+const MUSIC_KEYS = ["playPause", "next", "previous", "volumeUp", "volumeDown"];
 const VOICE = /^[\p{L}\p{N} .()'-]{1,64}$/u;
 
 // Configs from before the levels existed carry openApps; loading fills in the
@@ -34,7 +35,7 @@ function toolPrompt(config) {
     chat: "",
     open,
     lookup: `${open} You can also search the web and read web pages to answer questions about news, weather, facts or anything current; look it up instead of guessing.`,
-    full: "You have full use of this Mac through the shell: open apps and links, run commands and scripts, control apps with AppleScript (osascript), and search the web. When asked to do something on the Mac, do it, then say in one line what you did. Ask first before deleting files, sending messages or spending money.",
+    full: "You have full use of this Mac through the shell: open apps and links, run commands and scripts, control apps with AppleScript (osascript), and search the web. For music in any player (YouTube Music in the browser, Spotify, Music), use `media-control`: `media-control get` says what is playing (null means nothing), and `play`, `pause`, `toggle-play-pause`, `next-track`, `previous-track` control it. When asked to do something on the Mac, do it, then say in one line what you did. Ask first before deleting files, sending messages or spending money.",
   }[accessLevel(config)];
 }
 
@@ -47,6 +48,7 @@ function validateSettings(patch, current) {
   next.pet = { ...current.pet };
   next.work = { ...current.work };
   next.nudges = { ...current.nudges };
+  next.musicKeys = { ...current.musicKeys };
   const errors = {};
   const take = (key, ok, message, set) => {
     if (!(key in patch)) return;
@@ -65,6 +67,7 @@ function validateSettings(patch, current) {
   for (const k of ["greetings", "wants", "petting"]) take(`pet.${k}`, bool, "On or off.", (v) => { next.pet[k] = v; });
   for (const k of ["reminders", "briefing", "prWatch", "endOfDay"]) take(`work.${k}`, bool, "On or off.", (v) => { next.work[k] = v; });
   for (const k of ["briefingTime", "endOfDayTime"]) take(`work.${k}`, (v) => typeof v === "string" && HHMM.test(v), "Use 24-hour time like 09:15.", (v) => { next.work[k] = v; });
+  for (const k of MUSIC_KEYS) take(`musicKeys.${k}`, (v) => v === "" || (typeof v === "string" && HOTKEY.test(v)), "Use a shortcut like Control+Alt+Space, or leave it empty.", (v) => { next.musicKeys[k] = v; });
   for (const k of ["enabled", "calendar"]) take(`nudges.${k}`, bool, "On or off.", (v) => { next.nudges[k] = v; });
   take("nudges.notificationsFile", (v) => typeof v === "string" && v.length <= 1024 && !/[\0\n]/.test(v), "Pick a file.", (v) => { next.nudges.notificationsFile = v.trim(); });
   return { config: next, errors };
@@ -79,6 +82,7 @@ function settingsView(config) {
     "pet.greetings": config.pet?.greetings !== false, "pet.wants": config.pet?.wants !== false, "pet.petting": config.pet?.petting !== false,
     "work.reminders": config.work?.reminders !== false, "work.briefing": !!config.work?.briefing, "work.prWatch": !!config.work?.prWatch, "work.endOfDay": !!config.work?.endOfDay,
     "work.briefingTime": config.work?.briefingTime ?? "09:15", "work.endOfDayTime": config.work?.endOfDayTime ?? "17:45",
+    ...Object.fromEntries(MUSIC_KEYS.map((k) => [`musicKeys.${k}`, config.musicKeys?.[k] ?? ""])),
     "nudges.enabled": !!config.nudges?.enabled, "nudges.calendar": !!config.nudges?.calendar, "nudges.notificationsFile": config.nudges?.notificationsFile ?? "",
   };
 }

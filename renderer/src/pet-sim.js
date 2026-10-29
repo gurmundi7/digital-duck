@@ -14,6 +14,7 @@ import {
   CROUCH_PERIOD_S, CROUCH_END_PHASE, VEL_FWD, VEL_BACK, VEL_ANG, RVEL_FWD, RVEL_BACK, RVEL_ANG,
 } from "../../sim/src/game/constants.js";
 import { VARIANTS, DEFAULT_VARIANT, materialHookFor, applyVariant } from "../../sim/src/game/variants.js";
+import { addHeadphones } from "./headphones.js";
 
 const HEAD_ALPHA = 0.2;
 const FALL_DEBOUNCE_STEPS = 10;
@@ -157,6 +158,7 @@ export async function createPetSim({ halfX, halfY, variant = DEFAULT_VARIANT, on
   {
     const legsModel = mujoco.MjModel.from_xml_string(xml, vfs);
     const legsRig = await rigPromise;
+    addHeadphones(legsRig);
     locos.legs = { model: legsModel, data: new mujoco.MjData(legsModel), rig: legsRig, trunkGroup: legsRig.bodies.get("trunk_base"), ...resolveAddrs(legsModel, kin) };
   }
   let loco = "legs";
@@ -184,6 +186,7 @@ export async function createPetSim({ halfX, halfY, variant = DEFAULT_VARIANT, on
         ort.InferenceSession.create(POLICIES.crouch, sessionOpts),
         addMeshesToVfs(rMeshFiles),
       ]);
+      addHeadphones(rRig);
       sessions.drive = sDrive;
       sessions.crouch = sCrouch;
       const rModel = mujoco.MjModel.from_xml_string(rXml, vfs);
@@ -522,6 +525,7 @@ export async function createPetSim({ halfX, halfY, variant = DEFAULT_VARIANT, on
     loco = name;
     ({ model, data, rig, trunkGroup, qposAdr, dofAdr, gyroAdr, trunkId, standKeyId, ankleIds, extraJoints, platGeom, platMocap, ballQposAdr, ballDofAdr } = locos[name]);
     applyVariant(rig, currentVariant);
+    showPhones();
     resetSim();
     emit({ type: "rig", rig, prevRig });
   }
@@ -605,6 +609,9 @@ export async function createPetSim({ halfX, halfY, variant = DEFAULT_VARIANT, on
     paused = v;
     if (!v && wake) wake();
   }
+  let phonesOn = false;
+  const showPhones = () => { const phones = rig.bodies.get("jaw_soft")?.getObjectByName("headphones"); if (phones) phones.visible = phonesOn; };
+  function setHeadphones(on) { phonesOn = Boolean(on); showPhones(); }
   function setVariant(name) {
     if (!VARIANTS[name] || name === currentVariant) return;
     currentVariant = name;
@@ -675,6 +682,7 @@ export async function createPetSim({ halfX, halfY, variant = DEFAULT_VARIANT, on
     get grabbed() { return grab !== null; },
     get paused() { return paused; },
     get variant() { return currentVariant; },
+    setHeadphones, get headphones() { return phonesOn; },
     debug: () => ({ twist: Array.from(twist), cmd: Array.from(cmd).slice(0, 7), ctrlSteps, lastAction: Array.from(lastAction).slice(0, 5) }),
     isBusy: () => mode !== "walk" || recovery !== null || standTimer !== null || grab !== null || locoSwitching,
     sit, stand, roll: doRoll, groundPick, startGrab, moveGrab, endGrab, reset: resetSim, setPaused, setVariant,
