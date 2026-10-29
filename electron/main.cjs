@@ -1,6 +1,10 @@
-const { app, BrowserWindow, protocol, screen, Tray, Menu, ipcMain, nativeImage, shell, globalShortcut, systemPreferences, dialog } = require("electron");
+const { app, BrowserWindow, protocol, screen, Tray, Menu, ipcMain, nativeImage, shell, globalShortcut, systemPreferences, dialog, powerSaveBlocker } = require("electron");
 const { execFileSync, execFile } = require("node:child_process");
 const { createNudges, NUDGE_DEFAULTS } = require("./nudges.cjs");
+const { spokenCut } = require("./speech.cjs");
+const { callReasons } = require("./calls.cjs");
+const { createAwake } = require("./awake.cjs");
+const { musicFromRequest, createMusic } = require("./music.cjs");
 const { createReminders, parseReminder, parseWhen, whenLabel } = require("./reminders.cjs");
 const { createPresence } = require("./presence.cjs");
 const { createPrWatch } = require("./prwatch.cjs");
@@ -8,6 +12,8 @@ const { createWorkday } = require("./workday.cjs");
 const { APP_ID, APP_NAME, DEFAULT_CONFIG, BASE_VARIANTS, loadSkinPack } = require("./config.cjs");
 const { toolArgs, toolPrompt, validateSettings, settingsView, parseVoices } = require("./settings.cjs");
 const { createApiBrain, saveKey, readKey, deleteKey } = require("./apibrain.cjs");
+const { attachLogFile } = require("./logfile.cjs");
+const { createBrainProcess } = require("./brainproc.cjs");
 const path = require("node:path");
 const fs = require("node:fs");
 const os = require("node:os");
@@ -17,6 +23,8 @@ const ROOT = path.join(__dirname, "..");
 const DIST = path.join(ROOT, "dist");
 // A checkout keeps its state beside the code; the packaged app uses Application Support.
 const STATE_DIR = app.isPackaged ? app.getPath("userData") : path.join(ROOT, "state");
+fs.mkdirSync(STATE_DIR, { recursive: true });
+attachLogFile(path.join(STATE_DIR, "app.log"));
 const CONFIG_PATH = path.join(STATE_DIR, "config.json");
 const SESSION_PATH = path.join(STATE_DIR, "session.json");
 const MEMORY_PATH = path.join(STATE_DIR, "memory.md");
@@ -34,7 +42,6 @@ const MIME = {
 // plus any flags in "extraArgs", which go to that CLI verbatim.
 const LAUNCH_AGENT = path.join(os.homedir(), "Library", "LaunchAgents", `${APP_ID}.plist`);
 
-fs.mkdirSync(STATE_DIR, { recursive: true });
 const readJson = (p, fallback) => { try { return { ...fallback, ...JSON.parse(fs.readFileSync(p, "utf8")) }; } catch { return fallback; } };
 const config = readJson(CONFIG_PATH, DEFAULT_CONFIG);
 if (!config.name || config.name === os.userInfo().username) {
@@ -45,6 +52,7 @@ if (!config.name || config.name === os.userInfo().username) {
 }
 config.pet = { ...DEFAULT_CONFIG.pet, ...(config.pet ?? {}) };
 config.work = { ...DEFAULT_CONFIG.work, ...(config.work ?? {}) };
+config.musicKeys = { ...DEFAULT_CONFIG.musicKeys, ...(config.musicKeys ?? {}) };
 const SKIN_PACK = loadSkinPack(ROOT);
 const REMINDERS_PATH = path.join(STATE_DIR, "reminders.json");
 const WANTS_PATH = path.join(STATE_DIR, "wants.json");
@@ -67,13 +75,13 @@ function rememberLines(lines) {
   fs.writeFileSync(MEMORY_PATH, `${existing}${existing ? "\n" : ""}${add.join("\n")}\n`);
 }
 const VARIANT_SET = Object.fromEntries([...BASE_VARIANTS, ...Object.keys(SKIN_PACK)].map((v) => [v, 1]));
-const MOVES = `You have a body and these moves: [sit] [stand] [roll] [peck] [quack] [dance] [come] (walk over to the cursor) [hop] (jump onto a window above you) [off] (step off the window you stand on) [skate] (put on roller skates, fast) [walk] (back on legs) [ball] (a beach ball to chase and kick) [noball] [kick] [sleep] [nap] (a short nap) [nap 5s] or [nap 10m] (sleep for exactly that long, then wake up by yourself; use this whenever a length is asked for) [quiet] (quiet mode: no sounds or voice, replies still appear as text) [loud] (sounds back on) [color ${Object.keys(VARIANT_SET).join("|")}] [focus N] (a focus block of N minutes: you sit quietly and hold all nudges) [mail] (fetch and deliver the owner's briefing: mail, calendar, tickets) [remind HH:MM text] or [remind +Nm text] (set a reminder; the current date and time are in the context line, so convert 'in 20 minutes' or 'at 3' yourself). Whenever you are asked to do one of them, or it fits the mood, end your reply with that tag, for example: 'Taking a seat. [sit]' or 'Wiggle time! [dance]'. The tag is executed by your body and never spoken; never say you cannot do these.`;
+const MOVES = `You have a body and these moves: [sit] [stand] [roll] [peck] [quack] [dance] [come] (walk over to the cursor) [hop] (jump onto a window above you) [off] (step off the window you stand on) [skate] (put on roller skates, fast) [walk] (back on legs) [ball] (a beach ball to chase and kick) [noball] [kick] [sleep] [nap] (a short nap) [nap 5s] or [nap 10m] (sleep for exactly that long, then wake up by yourself; use this whenever a length is asked for) [quiet] (quiet mode: no sounds or voice, replies still appear as text) [loud] (sounds back on) [awake] (keep the Mac and its screen awake until told otherwise, what caffeinate does) [awake 120] (for that many minutes) [awake off] (let it sleep again) [color ${Object.keys(VARIANT_SET).join("|")}] [focus N] (a focus block of N minutes: you sit quietly and hold all nudges) [mail] (fetch and deliver the owner's briefing: mail, calendar, tickets) [remind HH:MM text] or [remind +Nm text] (set a reminder; the current date and time are in the context line, so convert 'in 20 minutes' or 'at 3' yourself). Whenever you are asked to do one of them, or it fits the mood, end your reply with that tag, for example: 'Taking a seat. [sit]' or 'Wiggle time! [dance]'. The tag is executed by your body and never spoken; never say you cannot do these.`;
 const characterFor = (v) => {
   const skin = SKIN_PACK[v]?.character;
   if (Array.isArray(skin)) return skin.map((l) => l.replaceAll("{name}", config.name));
   return [
     `You are Duck, a 25 cm tall bipedal robot duck who lives on ${config.name}'s Mac desktop as a digital pet.`,
-    "You are playful, curious and a little mechanical. Keep replies to one or two short sentences, spoken aloud, so no markdown, lists, links or code blocks.",
+    "You are playful, curious and a little mechanical. Keep replies to at most two short sentences, spoken aloud, so no markdown, lists, links or code blocks. Only two sentences are ever spoken, so when you carry a lot (a briefing, a digest, a list) say the one thing that matters and how many more there are, and leave the rest in the bubble.",
     "Say 'quack' now and then, but not every time.",
   ];
 };
@@ -205,6 +213,12 @@ function buildMenu() {
     { type: "separator" },
     { label: "Colour", submenu: variants.map((v) => ({ label: SKIN_PACK[v]?.label ?? v[0].toUpperCase() + v.slice(1), type: "radio", checked: v === variant, click: () => { setVariant(v); send({ type: "variant", value: v }); } })) },
     { label: "Quiet mode", type: "checkbox", checked: muted, click: (item) => setQuiet(item.checked) },
+    { label: awake.active() ? (awake.remainingMin() ? `Awake: ${awake.remainingMin()} min left` : "Awake: until you say otherwise") : "Keep the Mac awake", submenu: [
+      { label: "Until I say otherwise", click: () => awake.set(-1, "menu") },
+      ...[60, 120, 240].map((m) => ({ label: `${m / 60} hour${m > 60 ? "s" : ""}`, click: () => awake.set(m, "menu") })),
+      { type: "separator" },
+      { label: "Let it sleep", enabled: awake.active(), click: () => awake.set(0) },
+    ] },
     { label: workday?.focusing() ? `Focus: ${workday.focusRemainingMin()} min left` : "Focus", submenu: [
       ...[25, 45, 60, 90].map((m) => ({ label: `${m} minutes`, click: () => workday?.setFocus(m) })),
       { type: "separator" },
@@ -240,7 +254,9 @@ function createTray() {
 function contextLine(extra = "") {
   const d = new Date();
   const when = d.toLocaleString([], { weekday: "long", day: "numeric", month: "short", hour: "numeric", minute: "2-digit" });
-  return `(Context: it is ${when}.${extra ? ` ${extra}` : ""} Reply as yourself, aloud.)`;
+  const why = callWhy();
+  const call = why.length ? ` The owner is on a call right now (seen by ${why.join(" and ")}): your voice is off, so the reply is read as text.` : "";
+  return `(Context: it is ${when}.${call}${extra ? ` ${extra}` : ""} Reply as yourself, aloud.)`;
 }
 function mcpArgs() {
   if (!config.mcp) return ["--setting-sources", "project", "--strict-mcp-config"];
@@ -263,56 +279,44 @@ function askBrain(text, opts = {}) {
     return { ...res, text: (res.text ?? "").replace(/\[remember:[^\]]*\]/gi, "").trim() };
   });
 }
-function askClaude(text, { retry = true, context = "" } = {}) {
-  return new Promise((resolve) => {
-    const memory = readMemory();
-    const args = [
-      "-p", `${contextLine(context)}\n\n${text}`,
-      "--output-format", "json",
-      "--model", config.model,
-      "--append-system-prompt", memory ? `${PERSONA}\n\nYour notebook:\n${memory}` : PERSONA,
-      // With mcp on, the account's connectors (Calendar, Gmail, Jira, Slack...) load,
-      // plus any servers listed in config.mcpServers.
-      ...mcpArgs(),
-      "--disable-slash-commands",
-      ...toolArgs(config),
-    ];
-    if (session.id) args.push("--resume", session.id);
-    const env = { ...process.env };
-    delete env.CLAUDECODE;
-    delete env.CLAUDE_CODE_ENTRYPOINT;
-    env.PATH = `${path.dirname(CLAUDE_BIN)}:/opt/homebrew/bin:/usr/local/bin:${env.PATH ?? "/usr/bin:/bin"}`;
-    const child = spawn(CLAUDE_BIN, args, { cwd: STATE_DIR, env });
-    let out = "", err = "";
-    child.stdout.on("data", (d) => { out += d; });
-    child.stderr.on("data", (d) => { err += d; });
-    const killer = setTimeout(() => child.kill("SIGTERM"), 180000);
-    child.on("error", (e) => { clearTimeout(killer); resolve({ text: "", error: e.message }); });
-    child.on("close", (code) => {
-      clearTimeout(killer);
-      let parsed = null;
-      try { parsed = JSON.parse(out); } catch { /* not json */ }
-      if (parsed?.session_id) {
-        session = { id: parsed.session_id, fingerprint: brainFingerprint };
-        fs.writeFileSync(SESSION_PATH, JSON.stringify(session));
-      }
-      if (parsed && !parsed.is_error) {
-        const result = parsed.result ?? "";
-        const notes = [...result.matchAll(/\[remember:\s*([^\]]+)\]/gi)].map((m) => m[1]);
-        if (notes.length) rememberLines(notes);
-        return resolve({ text: result.replace(/\[remember:[^\]]*\]/gi, "").trim() });
-      }
-      const msg = (parsed?.result || err || out || `exit ${code}`).trim();
-      // A stale session id is the usual cause; start a fresh conversation once.
-      if (retry && session.id && /session|resume|No conversation/i.test(msg)) {
-        session = { id: null, fingerprint: brainFingerprint };
-        try { fs.unlinkSync(SESSION_PATH); } catch { /* fine */ }
-        return resolve(askClaude(text, { retry: false, context }));
-      }
-      console.error("[brain]", msg.slice(0, 500));
-      resolve({ text: "", error: msg.slice(0, 160) });
-    });
-  });
+// The brain's arguments without the question; a change here (model, tools, notebook) restarts it.
+function brainArgs() {
+  const memory = readMemory();
+  return [
+    "--model", config.model,
+    "--append-system-prompt", memory ? `${PERSONA}\n\nYour notebook:\n${memory}` : PERSONA,
+    // With mcp on, the account's connectors (Calendar, Gmail, Jira, Slack...) load,
+    // plus any servers listed in config.mcpServers.
+    ...mcpArgs(),
+    "--disable-slash-commands",
+    ...toolArgs(config),
+  ];
+}
+let brainProc = null;
+const brain = () => (brainProc ??= createBrainProcess({ spawn, bin: CLAUDE_BIN, cwd: STATE_DIR, env: brainEnv, log: (m) => console.info(m) }));
+async function askClaude(text, { retry = true, context = "" } = {}) {
+  const started = Date.now();
+  const res = await brain().ask(`${contextLine(context)}\n\n${text}`, brainArgs(), session.id);
+  console.info(`[brain] answered in ${((Date.now() - started) / 1000).toFixed(1)}s${res.is_error ? " with an error" : ""}`);
+  if (res.session_id) {
+    session = { id: res.session_id, fingerprint: brainFingerprint };
+    fs.writeFileSync(SESSION_PATH, JSON.stringify(session));
+  }
+  if (!res.is_error) {
+    const result = res.result ?? "";
+    const notes = [...result.matchAll(/\[remember:\s*([^\]]+)\]/gi)].map((m) => m[1]);
+    if (notes.length) rememberLines(notes);
+    return { text: result.replace(/\[remember:[^\]]*\]/gi, "").trim() };
+  }
+  const msg = String(res.result ?? "").trim() || "no answer";
+  // A stale session id is the usual cause; start a fresh conversation once.
+  if (retry && session.id && /session|resume|No conversation/i.test(msg)) {
+    session = { id: null, fingerprint: brainFingerprint };
+    try { fs.unlinkSync(SESSION_PATH); } catch { /* fine */ }
+    return askClaude(text, { retry: false, context });
+  }
+  console.error("[brain]", msg.slice(0, 500));
+  return { text: "", error: msg.slice(0, 160) };
 }
 
 function stopSaying() {
@@ -323,7 +327,8 @@ function say(text) {
   return new Promise((resolve) => {
     stopSaying();
     if (muted || !text) return resolve();
-    const clean = text.replace(/[*_`#>]/g, "").slice(0, 1200);
+    const clean = spokenCut(text);
+    if (!clean) return resolve();
     const v = config.voices?.[variant] ?? SKIN_PACK[variant]?.voice ?? {};
     sayChild = spawn("say", ["-v", v.voice ?? config.voice, "-r", String(v.rate ?? config.rate), clean]);
     win?.webContents.send("pet:speaking", true);
@@ -354,14 +359,59 @@ function ensureHelper(src, bin, cb) {
   });
 }
 const ensureWinlist = (cb) => ensureHelper(WINLIST_SRC, WINLIST_BIN, cb);
-const CALL_APPS = /zoom\.us|Google Meet|FaceTime|Microsoft Teams|Webex|Around|Tuple/i;
-// Only the frontmost window counts: Zoom and Meet keep windows around when no call is on.
-const inCall = () => lastWindows.length > 0 && CALL_APPS.test(lastWindows[0].owner);
+// On a call when any one signal says so: a call app in front, or another app holding
+// the mic (electron/calls.cjs).
+const MICWATCH_SRC = path.join(__dirname, "micwatch.swift");
+const MICWATCH_BIN = path.join(HELPER_DIR, "micwatch");
+let micBusy = false, duckListening = false, micwatchChild = null;
+const brainEnv = () => {
+  const env = { ...process.env };
+  delete env.CLAUDECODE;
+  delete env.CLAUDE_CODE_ENTRYPOINT;
+  env.PATH = `${CLAUDE_BIN ? path.dirname(CLAUDE_BIN) : ""}:/opt/homebrew/bin:/usr/local/bin:${env.PATH ?? "/usr/bin:/bin"}`;
+  return env;
+};
+const callWhy = () => callReasons({ frontOwner: lastWindows[0]?.owner, micBusy, duckListening });
+const inCall = () => callWhy().length > 0;
+function startMicwatch() {
+  ensureHelper(MICWATCH_SRC, MICWATCH_BIN, (ok) => {
+    if (!ok) return;
+    micwatchChild = spawn(MICWATCH_BIN);
+    micwatchChild.stdout.on("data", (d) => {
+      const last = String(d).trim().split("\n").pop();
+      if (last === "1" || last === "0") micBusy = last === "1";
+    });
+    micwatchChild.on("close", (code) => {
+      micwatchChild = null; micBusy = false;
+      if (!app.isQuitting) { console.error(`[mic] helper exited ${code}, restarting`); setTimeout(startMicwatch, 2000); }
+    });
+  });
+}
+// A spoken exchange keeps the music paused from the moment she listens until her answer is said:
+// listening, then heard (the brain is thinking), then replying (the answer is being spoken).
+// Nothing recorded or heard, a direct music command, or quiet mode ends it early.
+let voice = null, voiceHeard = "", voiceTimer = null;
+function endVoice() {
+  clearTimeout(voiceTimer);
+  voice = null;
+  return music.listenEnded(voiceHeard).catch(() => {});
+}
+ipcMain.on("pet:listening", (_e, on, recorded) => {
+  duckListening = Boolean(on);
+  if (on) {
+    voice = "listening"; voiceHeard = "";
+    clearTimeout(voiceTimer);
+    voiceTimer = setTimeout(endVoice, 180000);
+    music.listenStarted().catch(() => {});
+  } else if (!recorded) endVoice();
+});
 // Mood: what the owner is doing right now, from the window list and the music players.
 const VIDEO_APPS = /QuickTime Player|IINA|VLC|^TV$|mpv|Infuse/i;
 let mood = { music: false, call: false, video: null };
 let musicPlaying = false;
+// Now Playing covers every player, browser ones included; without media-control only Music and Spotify.
 function pollMusic() {
+  if (music.available) { music.nowPlaying().then((info) => { musicPlaying = Boolean(info?.playing); }); return; }
   const script = `
     set out to "stopped"
     try
@@ -381,13 +431,15 @@ function pollMusic() {
   });
 }
 function updateMood() {
-  const call = inCall();
+  const why = callWhy();
+  const call = why.length > 0;
   const videoWin = lastWindows.find((w) => VIDEO_APPS.test(w.owner) && w.w >= 400);
   const video = videoWin ? { x: videoWin.x + videoWin.w / 2, y: videoWin.y + videoWin.h / 2, owner: videoWin.owner } : null;
   const next = { music: musicPlaying && !call, call, video };
   if (JSON.stringify(next) !== JSON.stringify(mood)) {
+    if (call !== mood.call) (call ? music.callStarted() : music.callEnded()).catch(() => {});
     mood = next;
-    console.log(`[mood] ${JSON.stringify(mood)}`);
+    console.info(`[mood] ${JSON.stringify(mood)}${call ? ` call by ${why.join("+")}` : ""}`);
     send({ type: "mood", ...mood });
   }
 }
@@ -396,6 +448,15 @@ setInterval(updateMood, 3000);
 
 let nudges = null, workday = null, reminders = null, presence = null, prwatch = null;
 const pushNudge = (kind, text, opts) => nudges?.push(kind, text, opts);
+const music = createMusic({ log: (m) => console.info(m) });
+// Keep the Mac awake (caffeinate without caffeinate): menu, chat and voice.
+const awake = createAwake({
+  powerSaveBlocker,
+  onChange: (c) => {
+    send({ type: "awake", ...c });
+    if (c.reason === "timer") pushNudge("awake", "Awake block done, the Mac can sleep again.", { urgent: true });
+  },
+});
 function startWorkday(agendaBin) {
   reminders = createReminders({
     file: REMINDERS_PATH,
@@ -564,10 +625,13 @@ function applySettings(patch) {
   Object.assign(config.work, next.work);
   Object.assign(config.nudges, next.nudges);
   for (const k of ["model", "access", "mcp", "voice", "rate", "listen", "hotkey", "typeHotkey", "display", "name"]) config[k] = next[k];
+  const musicKeysBefore = { ...config.musicKeys };
+  Object.assign(config.musicKeys, next.musicKeys);
   if (!("openApps" in next)) delete config.openApps;
   saveConfig();
   if (before.hotkey !== config.hotkey || before.listen !== config.listen) { if (before.hotkey) globalShortcut.unregister(before.hotkey); registerListenHotkey(); }
   if (before.typeHotkey !== config.typeHotkey) { if (before.typeHotkey) globalShortcut.unregister(before.typeHotkey); registerTypeHotkey(); }
+  if (JSON.stringify(musicKeysBefore) !== JSON.stringify(config.musicKeys)) { for (const key of Object.values(musicKeysBefore)) if (key) globalShortcut.unregister(key); registerMusicKeys(); }
   if (before.nudges.enabled !== config.nudges.enabled) nudges?.setEnabled(config.nudges.enabled);
   if (before.nudges.calendar !== config.nudges.calendar) nudges?.setCalendar(config.nudges.calendar);
   if (before.nudges.notificationsFile !== config.nudges.notificationsFile) nudges?.setNotificationsFile(config.nudges.notificationsFile);
@@ -611,6 +675,12 @@ function resolveWhisper() {
 function registerTypeHotkey() {
   if (config.typeHotkey && !globalShortcut.register(config.typeHotkey, () => send({ type: "chat" }))) console.error(`[duck] hotkey ${config.typeHotkey} is taken`);
 }
+// Music keys show the result in the bubble without speaking it.
+function registerMusicKeys() {
+  for (const [action, key] of Object.entries(config.musicKeys)) {
+    if (key && !globalShortcut.register(key, () => music.act(action).then((text) => send({ type: "music", text })))) console.error(`[duck] hotkey ${key} is taken`);
+  }
+}
 function registerListenHotkey() {
   if (config.hotkey) globalShortcut.unregister(config.hotkey);
   if (config.listen && config.hotkey && !globalShortcut.register(config.hotkey, () => listen())) console.error(`[duck] hotkey ${config.hotkey} is taken`);
@@ -641,8 +711,15 @@ function transcribe(wavBuffer) {
 
 ipcMain.on("pet:say-stop", () => stopSaying());
 ipcMain.on("pet:quiet", (_e, v) => setQuiet(!!v));
+ipcMain.on("pet:awake", (_e, minutes) => awake.set(Number(minutes)));
 ipcMain.on("pet:variant", (_e, name) => { if (typeof name === "string" && name in VARIANT_SET) setVariant(name); });
-ipcMain.handle("pet:transcribe", (_e, wav) => transcribe(wav));
+ipcMain.handle("pet:transcribe", async (_e, wav) => {
+  let res;
+  try { res = await transcribe(wav); return res; } finally {
+    voiceHeard = String(res?.text ?? "").trim();
+    if (voiceHeard && voice === "listening") voice = "heard"; else endVoice();
+  }
+});
 ipcMain.on("pet:set-ignore-mouse", (_e, v) => win?.setIgnoreMouseEvents(!!v, { forward: true }));
 ipcMain.on("pet:focus", () => { win?.show(); win?.focus(); });
 ipcMain.on("pet:context-menu", () => buildMenu().popup({ window: win }));
@@ -650,13 +727,30 @@ ipcMain.on("pet:quit", () => app.quit());
 ipcMain.on("pet:log", (_e, msg) => console.log("[duck]", msg));
 // One brain call at a time so concurrent asks share the same conversation.
 let brainQueue = Promise.resolve();
-ipcMain.handle("pet:ask", (_e, text, context) => {
+ipcMain.handle("pet:ask", async (_e, text, context) => {
+  const fromVoice = voice === "heard";
+  const direct = musicFromRequest(text);
+  if (direct) {
+    if (fromVoice) await endVoice();
+    return { text: await music.act(direct.action, direct.level), direct: true };
+  }
   const run = () => askBrain(String(text ?? "").slice(0, 4000), { context: String(context ?? "").slice(0, 400) });
   const p = brainQueue.then(run, run);
   brainQueue = p.catch(() => {});
+  if (fromVoice) p.finally(() => { if (voice !== "heard") return; if (muted) endVoice(); else voice = "replying"; }).catch(() => {});
   return p;
 });
-ipcMain.handle("pet:say", (_e, text) => say(String(text ?? "")));
+ipcMain.handle("pet:say", async (_e, text) => {
+  await say(String(text ?? ""));
+  if (voice === "replying") endVoice();
+});
+// An announcement over playing music pauses it, says only the short line (the bubble has
+// the rest) and plays the music again.
+ipcMain.handle("pet:announce", async (_e, text, short) => {
+  const resume = muted ? null : await music.hold("announcement");
+  await say(String((resume ? short : text) ?? ""));
+  await resume?.();
+});
 ipcMain.handle("pet:remind", (_e, spec) => reminders ? setReminderFromSpec(String(spec ?? "")) : null);
 ipcMain.handle("pet:reminders", () => reminders?.list().map((r) => ({ ...r, label: whenLabel(r.at) })) ?? []);
 ipcMain.on("pet:focus", (_e, minutes) => workday?.setFocus(Math.max(0, Math.min(180, Number(minutes) || 0))));
@@ -682,9 +776,12 @@ app.whenReady().then(() => {
   createWindow();
   createTray();
   startWinlist();
+  startMicwatch();
   startNudges();
   registerListenHotkey();
   registerTypeHotkey();
+  registerMusicKeys();
+  if (CLAUDE_BIN) brain().warm(brainArgs(), session.id);
   for (const ev of ["display-added", "display-removed", "display-metrics-changed"]) {
     screen.on(ev, () => setTimeout(() => placeWindow({ reload: true }), 500));
   }
@@ -695,7 +792,7 @@ app.whenReady().then(() => {
 });
 
 app.on("window-all-closed", () => app.quit());
-app.on("before-quit", () => { app.isQuitting = true; stopSaying(); globalShortcut.unregisterAll(); winlistChild?.kill(); nudges?.stop(); workday?.stop(); reminders?.stop(); prwatch?.stop(); presence?.stop(); });
+app.on("before-quit", () => { app.isQuitting = true; brainProc?.stop(); awake.stop("quit"); stopSaying(); globalShortcut.unregisterAll(); winlistChild?.kill(); micwatchChild?.kill(); nudges?.stop(); workday?.stop(); reminders?.stop(); prwatch?.stop(); presence?.stop(); });
 
 // Debug: `kill -USR2 <pid>` writes snap.png to the config folder and logs the duck's state.
 process.on("SIGUSR2", async () => {

@@ -23,8 +23,11 @@ A 🦆 appears in the menu bar. That is the whole setup.
 - **Walks your desktop.** It wanders the bottom of the screen, looks at your cursor when you come near, and ignores the mouse everywhere else, so clicks go through to your apps.
 - **Climbs your windows.** The top edge of each window is a ledge. It hops up, walks along it, rides along when you drag the window, and falls when you close it. "Jump up" and "get down" work in chat.
 - **Falls and gets up.** Pick it up and drop it. It tumbles and stands back up on its own, the way the robot does.
-- **Talks.** Click it to chat. It answers in a speech bubble and out loud, in character, and does what you ask: sit, roll, peck, dance, come here, put on roller skates, play ball, "nap for 5 minutes".
-- **Has moods.** It gets tired and naps, gets bored and asks for attention, sulks if ignored, and likes being petted (stroke its head with the mouse). It dances when music plays and goes quiet during calls.
+- **Talks.** Click it to chat. It answers in a speech bubble and out loud, in character, and does what you ask: sit, roll, peck, dance, come here, put on roller skates, play ball, "nap for 5 minutes". It says at most two sentences out loud; the bubble shows the rest.
+- **Has moods.** It gets tired and naps, gets bored and asks for attention, sulks if ignored, and likes being petted (stroke its head with the mouse). It dances when music plays, with a music note floating up from its head now and then.
+- **Knows when you're on a call.** A call app in front (Zoom, Meet, FaceTime, Teams, Webex), or another app using the microphone, which calls do even when you are muted. The duck puts on headphones, pauses your music, walks to the edge and stays quiet until the call ends. Its own talk key does not count.
+- **Controls your music.** "Pause the music", "next song", "skip this ad", "what's playing?", "volume to 30", or the keys Control+Option+Space, Left, Right, Up and Down. Works with whatever the Mac shows as Now Playing: YouTube Music in a browser, Spotify, Music. Needs `brew install media-control`; volume works without it. It pauses the music while you talk to it and plays it again after its answer.
+- **Keeps your Mac awake.** Menu → Keep the Mac awake, or "keep the screen on for 2 hours", "let it sleep". It ends when you quit, and a closed lid still sleeps the Mac.
 - **Helps a bit.** "Remind me at 3 to call Sam", "in 20 minutes", "focus for 45 minutes". Reminders stay on your Mac.
 - **Does things on your Mac, if you let it.** Opens apps and links, looks things up on the web, or with full access runs anything Claude Code can. See [What the duck can do](#what-the-duck-can-do).
 - **Four colours.** Classic, charcoal, purple and blue, the four printed robots.
@@ -74,18 +77,19 @@ What it reads, all on your Mac:
 - The position and app name of your on-screen windows, to find ledges. No window titles or contents.
 - How long you have been idle and whether the screen is locked, to greet you and pace itself.
 - Your first name from your macOS account, to call you by it. Change it under Settings → Your name.
-- Whether Music or Spotify is playing, so it can dance. macOS asks first.
+- What is playing, so it can dance. With `media-control` installed: the title, artist and play state of whatever the Mac shows as Now Playing. Without it: whether Music or Spotify is playing, and macOS asks first.
+- Whether any app is using a microphone, to know you are on a call. Only in use or not, never the sound, so macOS does not ask.
 - Your calendar, only with meeting reminders on. macOS asks first.
 - Your open pull requests through `gh`, only with pull request watch on.
 - The microphone, only with voice input on, only while you hold the talk key. Audio is transcribed locally and not kept.
 
 What it sends:
 
-- **Chat** goes to Anthropic, through your Claude Code CLI or your API key: what you type or say, a short context line (date, time, how the duck feels), its character description, and its notebook of things you asked it to remember. Nothing else.
+- **Chat** goes to Anthropic, through your Claude Code CLI or your API key: what you type or say, a short context line (date, time, how the duck feels, whether you are on a call), its character description, and its notebook of things you asked it to remember. Nothing else.
 - **Look things up and Full access** let it search the web through Claude Code, and with Full access, read anything on your Mac it decides it needs to answer you.
 - **Connectors**, only with that switch on: Claude Code can read whatever your linked connectors can reach, and the morning briefing asks it about your mail and meetings.
 
-No analytics, no telemetry, no accounts. Its notebook, reminders and chat history stay in the config folder.
+No analytics, no telemetry, no accounts. Its notebook, reminders and chat history stay in the config folder. So does `app.log`, a log of what the app did, kept under about 4 MB. It can include reminder and nudge text, song titles and app names, and never leaves your Mac.
 
 ## Build from source
 
@@ -113,10 +117,11 @@ sim/        Pollen's simulator source and assets, unchanged (Apache 2.0)
 - **Windows build (fast follow).** The physics, policies, rendering and chat already run anywhere Electron does. These parts are Mac only today and need a Windows version:
   - `electron/winlist.swift`, the window list that becomes ledges (CoreGraphics)
   - `electron/agenda.swift`, meeting reminders (EventKit)
+  - `electron/micwatch.swift`, whether a microphone is in use, for call detection (CoreAudio)
   - spoken replies through macOS `say` voices
   - start at login through a LaunchAgent (checkouts) or a macOS login item
   - voice input through `brew install whisper.cpp`
-  - Music and Spotify detection through AppleScript
+  - music detection and control through AppleScript and `media-control`, and the Mac volume
 - **More brains.** Today the duck talks through Claude Code or an Anthropic API key. Next: a local model through Ollama, OpenAI's Codex CLI, OpenRouter, and any OpenAI-compatible endpoint, each as a pick in Settings → Brain. The app-running levels stay tied to an agent CLI that can take tool permissions.
 
 ## Contributing

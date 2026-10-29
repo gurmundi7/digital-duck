@@ -31,6 +31,7 @@ test("each level tells the duck what it can do, so it tries instead of refusing"
   assert.match(toolPrompt({ access: "open" }), /open -a .*open https:\/\//);
   assert.match(toolPrompt({ access: "lookup" }), /search the web/);
   assert.match(toolPrompt({ access: "full" }), /osascript/);
+  assert.match(toolPrompt({ access: "full" }), /media-control next-track|`next-track`/);
 });
 
 test("valid settings land in the config", () => {
@@ -80,4 +81,13 @@ test("the window shows what validateSettings takes back", () => {
 test("voices come out of say -v '?' with spaces and brackets intact", () => {
   const out = "Samantha            en_US    # Hello! My name is Samantha.\nEddy (English (US)) en_US    # Hi\nReed (English (UK))  en_GB    # Hello! My name is Reed.\n";
   assert.deepStrictEqual(parseVoices(out).map((v) => v.name), ["Samantha", "Eddy (English (US))", "Reed (English (UK))"]);
+});
+
+test("music keys take arrows, and an empty key turns one off", () => {
+  const { config, errors } = validateSettings({ "musicKeys.next": "Control+Alt+Right", "musicKeys.previous": "", "musicKeys.volumeUp": "Banana" }, DEFAULT_CONFIG);
+  assert.strictEqual(config.musicKeys.next, "Control+Alt+Right");
+  assert.strictEqual(config.musicKeys.previous, "");
+  assert.strictEqual(config.musicKeys.volumeUp, DEFAULT_CONFIG.musicKeys.volumeUp);
+  assert.ok(errors["musicKeys.volumeUp"]);
+  assert.strictEqual(settingsView(config)["musicKeys.next"], "Control+Alt+Right");
 });

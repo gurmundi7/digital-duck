@@ -9,6 +9,7 @@ import { applySkin, variantNames, variantAliases } from "./skins.js";
 import { createWants } from "./wants.js";
 import { line } from "./lines.js";
 import { napMs, napText, napFromRequest } from "./tags.js";
+import { createNotes } from "./notes.js";
 import { createNapper } from "./nap.js";
 
 const PX_PER_M = 640; // the 25 cm duck stands about 160 px tall
@@ -128,6 +129,9 @@ const ballShadow = shadow.clone(); ballShadow.scale.set(0.45, 0.45, 1); ballShad
 const audio = createAudio();
 const sim = await createPetSim({ halfX, halfY, onFootstep: (u) => audio.step(u), onLog: log });
 scene.add(sim.rig.placer);
+const notes = createNotes(scene);
+let musicOn = false;
+const headPos = new THREE.Vector3();
 log("duck ready");
 
 const bubble = createBubble({
@@ -289,7 +293,7 @@ function nudge({ kind, text }) {
   const said = DELIVERED_KINDS.has(kind) ? `${line(sim.variant, "deliver", { name: ownerName() })} ${text}` : text;
   const show = () => {
     bubble.show(said, { ttlMs: Math.min(40000, 7000 + said.length * 60) });
-    if (!audio.muted) pet.say(said);
+    if (!audio.muted) pet.announce(said, line(sim.variant, "newMessage"));
   };
   if (kind === "mail") wants?.chatted();
   behaviour.deliver(cursorPx ? screenToWorld(cursorPx.x, innerHeight - 20).x : null, show);
@@ -450,6 +454,7 @@ function runBodyAction(tag) {
     case "nap": startNap(napMs(tag.slice(3))); break;
     case "mail": pet.mail(wants?.describe() ?? ""); break;
     case "focus": pet.focus(Number(arg) || 25); break;
+    case "awake": pet.awake(arg === "off" ? 0 : Number(arg) || -1); break;
     case "come": { const x = behaviour.cursorX ?? (cursorPx ? screenToWorld(cursorPx.x, innerHeight - 20).x : null); if (x !== null) behaviour.goTo(x); break; }
     case "color": setVariant(arg); break;
   }
@@ -483,6 +488,15 @@ function impliedBodyActions(request) {
   if (focus) out.push(`focus ${focus[1]}`);
   else if (/\b(focus (mode|time|block)|heads down|do not disturb|don't disturb)\b/i.test(request)) out.push("focus 25");
   if (/\b(stop|end|done) (the )?focus(ing)?\b|\bfocus (off|over|done)\b/i.test(request)) out.push("focus 0");
+  // Keeping the Mac awake is about the Mac's sleep, not the duck's.
+  const awakeOn = /\b(stay awake|keep (the |my )?(mac|screen|display|computer)( awake| on)|don'?t (let (it|the mac|the screen) )?(sleep|go to sleep)|no sleeping|caffeinate|amphetamine)\b/i.test(request);
+  const awakeOff = /\b(let (it|the mac|the screen|the computer) sleep|sleep is fine|stop keeping .*awake|awake (off|mode off)|can sleep (now|again))\b/i.test(request);
+  if (awakeOn || awakeOff) for (const v of ["sleep", "nap"]) { const i = out.indexOf(v); if (i >= 0) out.splice(i, 1); }
+  if (awakeOff) out.push("awake off");
+  else if (awakeOn) {
+    const m = /\b(\d{1,3})\s*(h|hours?|hrs?)\b/i.exec(request) ?? /\b(\d{1,3})\s*(min|minutes?|m)\b/i.exec(request);
+    out.push(m ? `awake ${/^h/i.test(m[2]) ? Number(m[1]) * 60 : Number(m[1])}` : "awake");
+  }
   const aliases = variantAliases();
   const colour = new RegExp(`\\b(${[...variantNames(), ...Object.keys(aliases)].join("|")})\\b`, "i").exec(request);
   if (colour && /\b(colou?r|outfit|paint|turn)\b/i.test(request)) out.push(`color ${aliases[colour[1].toLowerCase()] ?? colour[1].toLowerCase()}`);
@@ -496,7 +510,7 @@ async function ask(text) {
   const res = await pet.ask(text, context);
   const raw = (res?.text || "").trim() || (res?.error ? `quack… (${res.error})` : "quack?");
   let actions = [...raw.matchAll(ACTION_TAG)].map((m) => m[1]);
-  if (!actions.length) actions = impliedBodyActions(text);
+  if (!actions.length && !res?.direct) actions = impliedBodyActions(text);
   else if (!actions.some((a) => /^remind/i.test(a))) actions.push(...impliedBodyActions(text).filter((a) => /^remind/i.test(a)));
   const timedNap = napFromRequest(text);
   if (timedNap && !actions.some((a) => /^nap\s+\d/i.test(a))) actions = [...actions.filter((a) => !/^(sleep|nap)$/i.test(a)), timedNap];
@@ -526,10 +540,13 @@ function handleCommand(cmd) {
     case "variant": setVariant(cmd.value); break;
     case "config": applyConfig(cmd); break;
     case "say": bubble.show(cmd.value, { ttlMs: 8000 }); pet.say(cmd.value); break;
+    case "music": if (cmd.text && !bubble.isPrompting()) bubble.show(cmd.text, { ttlMs: 3000 }); break;
     case "nudge": nudge(cmd); break;
     case "mood": {
       const video = cmd.video ? { ...cmd.video, worldX: screenToWorld(cmd.video.x, cmd.video.y).x } : null;
       behaviour.setMood({ music: cmd.music, call: cmd.call, video });
+      musicOn = Boolean(cmd.music);
+      if (sim.headphones !== Boolean(cmd.call)) { sim.setHeadphones(cmd.call); dozeDrawn = false; }
       audio.setHush(!!cmd.call);
       if (cmd.call) pet?.stopSpeaking();
       break;
@@ -544,6 +561,10 @@ function handleCommand(cmd) {
     case "presence": onPresence(cmd); break;
     case "front": if (!behaviour.engaged) behaviour.glance(screenToWorld(cmd.x, cmd.y).x); break;
     case "settings": settings = { pet: { ...settings.pet, ...(cmd.pet ?? {}) }, work: { ...settings.work, ...(cmd.work ?? {}) } }; if (!wants) ensureWants(cmd.wants ?? null); break;
+    case "awake": {
+      if (cmd.reason === "on" && cmd.origin === "menu") speak(line(sim.variant, cmd.minutes > 0 ? "awakeStart" : "awakeHold", { min: cmd.minutes }), { ttlMs: 7000 });
+      break;
+    }
     case "focus": {
       behaviour.setFocus(cmd.minutes > 0);
       if (cmd.minutes > 0) speak(line(sim.variant, "focusStart", { name: ownerName(), min: cmd.minutes }), { ttlMs: 7000 });
@@ -566,6 +587,7 @@ async function startListening() {
   pet?.stopSpeaking();
   listening = true;
   behaviour.setListening(true);
+  pet?.listening(true);
   bubble.show("listening…", { ttlMs: 0 });
   updateMouseGate();
   try {
@@ -574,6 +596,7 @@ async function startListening() {
   } catch (e) {
     listening = false;
     behaviour.setListening(false);
+    pet?.listening(false);
     bubble.show(`quack… no microphone (${e.message})`, { ttlMs: 6000 });
     log("mic failed", e.message);
   }
@@ -583,6 +606,7 @@ async function stopListening() {
   listening = false;
   behaviour.setListening(false);
   const wav = recorder.stop();
+  pet?.listening(false, Boolean(wav));
   if (!wav) { bubble.show("quack? I didn't hear anything", { ttlMs: 4000 }); behaviour.setChatting(false); return; }
   bubble.thinking();
   const res = await pet.transcribe(wav);
@@ -635,6 +659,8 @@ function frame(now) {
   behaviour.update(dt, now);
   wantsTick(dt);
   if (listening && frameNo % 6 === 0) bubble.setLevel(micLevel);
+  const head = sim.rig.bodies.get("jaw_soft");
+  notes.update(dt, { on: musicOn && behaviour.state !== "sleep" && !sim.grabbed, at: head ? head.getWorldPosition(headPos) : null });
   if (sim.paused && !asleep) {
     if (!dozeDrawn) { renderOnce(); dozeDrawn = true; }
   } else {

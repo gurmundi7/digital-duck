@@ -22,6 +22,8 @@ const DEFAULT_CONFIG = {
   listen: false,
   hotkey: "Alt+D",
   typeHotkey: "Alt+T",
+  // Global keys for the player in front of Now Playing and the Mac volume; "" turns one off.
+  musicKeys: { playPause: "Control+Alt+Space", next: "Control+Alt+Right", previous: "Control+Alt+Left", volumeUp: "Control+Alt+Up", volumeDown: "Control+Alt+Down" },
   quiet: false,
   display: "primary",
   whisperBin: "",
