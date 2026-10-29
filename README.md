@@ -1,16 +1,66 @@
-# Digital Duck
+<p align="center">
+  <img src="docs/hero.gif" alt="A small white robot duck walking along the top edge of a window on a Mac desktop" width="820">
+</p>
 
-An unofficial desktop pet inspired by Pollen's Microduck.
+<h1 align="center">Digital Duck</h1>
 
-![Digital Duck talking, falling and getting up, roller skating, changing colours, then opening Calculator on a Mac desktop](docs/demo.gif)
+<p align="center">
+  <em>A robot duck that lives on your Mac.</em>
+</p>
 
-A small robot duck that lives along the bottom of your Mac screen. It walks, hops onto your windows, falls over, gets back up, and talks back.
+<p align="center">
+  <a href="https://github.com/gurmundi7/digital-duck/releases/latest"><b>Download for Mac</b></a> ·
+  <a href="https://gurmundi7.github.io/digital-duck/">Website</a> ·
+  <a href="#how-it-works">How it works</a> ·
+  <a href="#privacy">Privacy</a> ·
+  <a href="CONTRIBUTING.md">Contributing</a>
+</p>
 
-Under the feathers it is [Pollen Robotics](https://www.pollen-robotics.com/)' Microduck robot in simulation: their MuJoCo model and their trained walking policies, from the open source [Microduck simulator](https://huggingface.co/spaces/pollen-robotics/microduck-simulator) by Pollen Robotics and Hugging Face. Every step is a trained robot policy driving a physics simulation, not a canned animation.
+<p align="center">
+  <a href="https://github.com/gurmundi7/digital-duck/releases/latest"><img src="https://img.shields.io/github/v/release/gurmundi7/digital-duck?label=download&color=ff8a3d" alt="Latest release"></a>
+  <img src="https://img.shields.io/badge/macOS-12%2B-14161d" alt="macOS 12 or later">
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-Apache%202.0-14161d" alt="Apache 2.0"></a>
+  <a href="https://github.com/gurmundi7/digital-duck/actions/workflows/ci.yml"><img src="https://github.com/gurmundi7/digital-duck/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+</p>
 
-Free, open source under [Apache 2.0](LICENSE), Mac. [Download](https://github.com/gurmundi7/digital-duck/releases/latest) · [Website](https://gurmundi7.github.io/digital-duck/) · [Report a bug or ask for a trick](https://github.com/gurmundi7/digital-duck/issues)
+<p align="center"><sub>An unofficial desktop pet inspired by Pollen's Microduck. Not affiliated with or endorsed by Pollen Robotics or Hugging Face.</sub></p>
 
-Follow the duck: [@gurbuilds on Instagram](https://www.instagram.com/gurbuilds/) · [@gurbuilds on X](https://x.com/gurbuilds)
+---
+
+**A 25 cm robot duck walks along the bottom of your screen.** It climbs your windows, falls over and gets back up, and talks back. Free and open source.
+
+It is [Pollen Robotics](https://www.pollen-robotics.com/)' Microduck in simulation: their MuJoCo model and their trained walking policies, from the open source [Microduck simulator](https://huggingface.co/spaces/pollen-robotics/microduck-simulator) by Pollen Robotics and Hugging Face. Every step is a trained robot policy driving physics, not an animation.
+
+## It does things
+
+<table>
+<tr>
+<td width="50%"><img src="docs/readme/walks-climbs.gif" alt="The duck walking along the top edge of a window" width="100%"></td>
+<td width="50%"><img src="docs/readme/gets-up.gif" alt="The duck falling over and standing back up" width="100%"></td>
+</tr>
+<tr>
+<td><b>It lives on your desktop.</b> The top of every window is a ledge it can hop onto. Clicks go straight through to your apps.</td>
+<td><b>It gets back up.</b> Pick it up and drop it. It finds its feet on its own, like the real robot.</td>
+</tr>
+<tr>
+<td width="50%"><img src="docs/readme/on-a-call.gif" alt="The duck putting on headphones and sitting down quietly" width="100%"></td>
+<td width="50%"><img src="docs/readme/music.gif" alt="The duck dancing with music notes floating up from its head" width="100%"></td>
+</tr>
+<tr>
+<td><b>It knows you're on a call.</b> Headphones on, music paused, not a word until you hang up.</td>
+<td><b>It plays with your music.</b> Dances along, and "next song", "pause", "what's playing?" just work.</td>
+</tr>
+<tr>
+<td width="50%"><img src="docs/readme/skates.gif" alt="The duck gliding on roller skates" width="100%"></td>
+<td width="50%"><img src="docs/readme/colours.gif" alt="The duck in classic, charcoal, purple and blue" width="100%"></td>
+</tr>
+<tr>
+<td><b>It skates.</b> "Put on your skates" and it swaps legs for wheels.</td>
+<td><b>Pick your duck.</b> Classic, charcoal, purple or blue, the four printed robots.</td>
+</tr>
+</table>
+
+It also talks back through Claude, keeps your Mac awake when you ask, naps, sulks when ignored, likes being petted and chases a beach ball.
 
 ## Install
 
@@ -18,7 +68,7 @@ Download the `.dmg` from [Releases](https://github.com/gurmundi7/digital-duck/re
 
 A 🦆 appears in the menu bar. That is the whole setup.
 
-## What it does
+## Everything it does
 
 - **Walks your desktop.** It wanders the bottom of the screen, looks at your cursor when you come near, and ignores the mouse everywhere else, so clicks go through to your apps.
 - **Climbs your windows.** The top edge of each window is a ledge. It hops up, walks along it, rides along when you drag the window, and falls when you close it. "Jump up" and "get down" work in chat.
@@ -90,6 +140,10 @@ What it sends:
 - **Connectors**, only with that switch on: Claude Code can read whatever your linked connectors can reach, and the morning briefing asks it about your mail and meetings.
 
 No analytics, no telemetry, no accounts. Its notebook, reminders and chat history stay in the config folder. So does `app.log`, a log of what the app did, kept under about 4 MB. It can include reminder and nudge text, song titles and app names, and never leaves your Mac.
+
+## How it works
+
+A see-through Electron window covers the screen. Inside, Pollen's MuJoCo model runs in WebAssembly and their trained policies run through ONNX Runtime, 50 times a second, drawn with three.js. A small Swift helper lists your windows, and the top edge of each becomes a ledge in the physics. Chat goes to Claude, and macOS `say` gives it a voice.
 
 ## Build from source
 
