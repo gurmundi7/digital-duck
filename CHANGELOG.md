@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.2.0
+
+- Knows when you're on a call: a call app in front, or another app using the microphone. Puts on headphones, pauses the music and stays quiet until the call ends.
+- Controls your music in any Now Playing player (YouTube Music, Spotify, Music) by chat, voice or global keys, through `media-control`. Volume up, down or to a level. Settings → Music changes the keys.
+- Pauses the music while you talk to it, and for its announcements, then plays it again.
+- Music notes float up from its head while music plays.
+- Keeps the Mac awake from the menu, chat or voice, for a set time or until you say otherwise.
+- Says at most two sentences out loud; the bubble shows the whole reply.
+- Answers faster: one Claude Code process stays running between questions instead of one per question.
+- Keeps a log, `app.log`, in the config folder.
+
 ## 0.1.0
 
 First release.
