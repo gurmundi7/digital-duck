@@ -1,7 +1,7 @@
 {
   "name": "digital-duck",
   "productName": "Digital Duck",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "private": true,
   "description": "An unofficial desktop pet inspired by Pollen's Microduck.",
   "license": "Apache-2.0",

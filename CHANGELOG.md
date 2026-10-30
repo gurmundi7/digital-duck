@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.1
+
+- The duck stays on the whole width of a window. Before, on a wide window it fell through the top edge when it walked more than a short way from the middle.
+
 ## 0.2.0
 
 - Knows when you're on a call: a call app in front, or another app using the microphone. Puts on headphones, pauses the music and stays quiet until the call ends.
