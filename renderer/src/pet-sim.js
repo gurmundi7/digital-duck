@@ -15,6 +15,7 @@ import {
 } from "../../sim/src/game/constants.js";
 import { VARIANTS, DEFAULT_VARIANT, materialHookFor, applyVariant } from "../../sim/src/game/variants.js";
 import { addHeadphones } from "./headphones.js";
+import { sizeLedge } from "./ledges.js";
 
 const HEAD_ALPHA = 0.2;
 const FALL_DEBOUNCE_STEPS = 10;
@@ -197,13 +198,12 @@ export async function createPetSim({ halfX, halfY, variant = DEFAULT_VARIANT, on
   let platforms = []; // [{ x, z (top surface), halfW }] in MJCF metres, at most PLATFORMS
   const platDepth = halfY + 0.1;
   function applyPlatforms() {
-    const mp = data.mocap_pos, gs = model.geom_size, rb = model.geom_rbound;
+    const mp = data.mocap_pos;
     for (let i = 0; i < PLATFORMS; i++) {
       const m = platMocap[i] * 3, g = platGeom[i];
       const pl = platforms[i];
       if (!pl) { mp[m] = 0; mp[m + 1] = 0; mp[m + 2] = -5; continue; }
-      gs[g * 3] = pl.halfW;
-      if (rb) rb[g] = Math.hypot(pl.halfW, platDepth, PLAT_HALF_T);
+      sizeLedge(model, g, pl.halfW, platDepth, PLAT_HALF_T);
       mp[m] = pl.x; mp[m + 1] = 0; mp[m + 2] = pl.z - PLAT_HALF_T;
     }
   }
