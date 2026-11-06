@@ -26,8 +26,8 @@
   },
   "devDependencies": {
     "@mujoco/mujoco": "3.11.0",
-    "electron": "^38.8.6",
-    "electron-builder": "26.17.0",
+    "electron": "^45.2.2",
+    "electron-builder": "26.18.0",
     "eslint": "10.14.0",
     "onnxruntime-web": "1.27.0",
     "three": "0.164.1",
