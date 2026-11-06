@@ -11,6 +11,8 @@ const APP_NAME = "Digital Duck";
 // Everything that reads the calendar, GitHub, the microphone or the network
 // beyond chat starts off; the menu turns each one on.
 const DEFAULT_CONFIG = {
+  // False until the welcome tour has been seen (finished, skipped or closed).
+  onboarded: false,
   voice: "Samantha",
   rate: 190,
   // Spoken voice per skin; skins not listed use voice/rate above. Any name from `say -v '?'`.

@@ -13,6 +13,7 @@ const { APP_ID, APP_NAME, DEFAULT_CONFIG, BASE_VARIANTS, loadSkinPack } = requir
 const { accessLevel, toolArgs, toolPrompt, validateSettings, settingsView, parseVoices } = require("./settings.cjs");
 const { createApiBrain, saveKey, readKey, deleteKey } = require("./apibrain.cjs");
 const { PROVIDERS, API_PROVIDERS, CLI_KEYS, resolveProvider, modelFor, levelFor, takeOpenTags, openArgs } = require("./providers.cjs");
+const { tourDue, brainStatus, brainChoices, TRY_PHRASES } = require("./tour.cjs");
 const { createCliBrain, withCliKey } = require("./clibrain.cjs");
 const { attachLogFile } = require("./logfile.cjs");
 const { createBrainProcess } = require("./brainproc.cjs");
@@ -46,6 +47,10 @@ const LAUNCH_AGENT = path.join(os.homedir(), "Library", "LaunchAgents", `${APP_I
 
 const readJson = (p, fallback) => { try { return { ...fallback, ...JSON.parse(fs.readFileSync(p, "utf8")) }; } catch { return fallback; } };
 const config = readJson(CONFIG_PATH, DEFAULT_CONFIG);
+const configExisted = fs.existsSync(CONFIG_PATH);
+const rawConfig = configExisted ? readJson(CONFIG_PATH, null) : null;
+const tourOnLaunch = tourDue(configExisted ? rawConfig ?? {} : null);
+if (rawConfig && rawConfig.onboarded === undefined) config.onboarded = true;
 if (!config.name || config.name === os.userInfo().username) {
   try {
     const real = execFileSync("dscl", [".", "-read", `/Users/${os.userInfo().username}`, "RealName"], { encoding: "utf8", timeout: 3000 }).replace(/^RealName:\s*/, "").trim().split(/\s+/)[0];
@@ -60,7 +65,7 @@ const REMINDERS_PATH = path.join(STATE_DIR, "reminders.json");
 const WANTS_PATH = path.join(STATE_DIR, "wants.json");
 const MCP_CONFIG_PATH = path.join(STATE_DIR, "mcp.json");
 const saveConfig = () => fs.writeFileSync(CONFIG_PATH, JSON.stringify(config, null, 2));
-if (!fs.existsSync(CONFIG_PATH)) saveConfig();
+if (!configExisted || (rawConfig && rawConfig.onboarded === undefined)) saveConfig();
 config.nudges = { ...NUDGE_DEFAULTS, ...(config.nudges ?? {}) };
 
 // One duck at a time: launchd and a manual start must not both run.
@@ -241,6 +246,7 @@ function buildMenu() {
     ] },
     { label: "Deliver my briefing now", click: () => workday?.briefing({ force: true }) },
     { label: "Settings…", accelerator: "Command+,", click: () => openSettings() },
+    { label: "Welcome tour…", click: () => openWelcome() },
     { type: "separator" },
     { label: "Reset duck", click: () => send({ type: "reset" }) },
     { label: "Open notebook…", click: () => { if (!fs.existsSync(MEMORY_PATH)) fs.writeFileSync(MEMORY_PATH, ""); spawn("open", ["-t", MEMORY_PATH]); } },
@@ -640,7 +646,7 @@ function openKeyPrompt(provider) {
   });
   keyWin.setMenu(null);
   keyWin.loadFile(path.join(__dirname, "keyprompt.html"), { query: { provider: API_PROVIDERS[provider] ? provider : "anthropic" } });
-  keyWin.on("closed", () => { keyWin = null; });
+  keyWin.on("closed", () => { keyWin = null; welcomeWin?.webContents.send("tour:event", "key-closed"); });
   app.focus({ steal: true });
 }
 const keyProvider = (p) => (API_PROVIDERS[p] ? p : "anthropic");
@@ -705,6 +711,56 @@ ipcMain.handle("settings:load", () => ({
   login: loginItemOn(),
 }));
 ipcMain.handle("settings:save", (_e, patch) => applySettings(patch && typeof patch === "object" ? patch : {}));
+
+// ── Welcome tour: opens by itself once for a new owner, and from the menu after ──
+let welcomeWin = null;
+function openWelcome() {
+  if (welcomeWin) { welcomeWin.show(); welcomeWin.focus(); return; }
+  const width = 460, height = 470;
+  const wa = targetDisplay().workArea;
+  welcomeWin = new BrowserWindow({
+    width, height, x: Math.round(wa.x + (wa.width - width) / 2), y: Math.round(wa.y + (wa.height - height) * 0.3),
+    resizable: false, minimizable: false, maximizable: false, alwaysOnTop: true, title: `Welcome to ${APP_NAME}`,
+    webPreferences: { preload: path.join(__dirname, "welcome-preload.cjs"), contextIsolation: true, sandbox: true },
+  });
+  welcomeWin.setMenu(null);
+  welcomeWin.loadFile(path.join(__dirname, "welcome.html"));
+  // Closing it any way counts as seen; it stays in the menu.
+  welcomeWin.on("closed", () => {
+    welcomeWin = null;
+    if (!config.onboarded) { config.onboarded = true; saveConfig(); }
+  });
+  app.focus({ steal: true });
+}
+async function tourBrain() {
+  const provider = activeProvider();
+  const hasKey = API_PROVIDERS[provider] ? !!(await readKey(provider)) : false;
+  return brainStatus({ provider, bins: CLI_BINS, hasKey, baseUrl: config.openaiBaseUrl });
+}
+const TOUR_ACTS = new Set(["dance", "quack", "hop", "come"]);
+ipcMain.handle("tour:load", async () => ({
+  name: config.name,
+  brain: await tourBrain(),
+  choices: brainChoices(CLI_BINS, Object.fromEntries(await Promise.all(Object.keys(API_PROVIDERS).map(async (id) => [id, !!(await readKey(id))])))),
+  phrases: TRY_PHRASES,
+  login: loginItemOn(),
+  typeHotkey: config.typeHotkey,
+  hotkey: config.hotkey,
+  listen: !!config.listen,
+}));
+ipcMain.handle("tour:use-brain", async (_e, id) => {
+  if (!PROVIDERS[id] || PROVIDERS[id].kind === "auto") return tourBrain();
+  applySettings({ provider: id });
+  const brain = await tourBrain();
+  if (brain.need === "key") openKeyPrompt(id);
+  return brain;
+});
+ipcMain.on("tour:act", (_e, name) => { if (TOUR_ACTS.has(name)) send({ type: "act", value: name }); });
+ipcMain.on("tour:try", (_e, text) => { if (TRY_PHRASES.some((p) => p.text === text)) send({ type: "ask", value: text }); });
+ipcMain.handle("tour:login", (_e, on) => { setLoginItem(!!on); return loginItemOn(); });
+ipcMain.on("tour:settings", () => openSettings());
+ipcMain.on("tour:done", () => welcomeWin?.close());
+ipcMain.on("pet:tour-event", (_e, name) => welcomeWin?.webContents.send("tour:event", String(name)));
 ipcMain.handle("settings:preview-voice", (_e, voice, rate) => {
   const { errors } = validateSettings({ voice, rate }, config);
   if (Object.keys(errors).length) return;
@@ -829,6 +885,7 @@ app.whenReady().then(() => {
   if (app.dock) app.dock.hide();
   createWindow();
   createTray();
+  if (tourOnLaunch) win.webContents.once("did-finish-load", () => setTimeout(openWelcome, 2500));
   startWinlist();
   startMicwatch();
   startNudges();
@@ -865,12 +922,12 @@ process.on("SIGUSR2", async () => {
 });
 
 // Debug: `kill -USR1 <pid>` runs debug.js from the config folder inside the renderer and logs its result.
-// A first line of "// target: settings" runs it in the open Settings window instead.
+// A first line of "// target: settings" or "// target: welcome" runs it in that open window instead.
 process.on("SIGUSR1", async () => {
   if (!win) return;
   try {
     const src = fs.readFileSync(path.join(STATE_DIR, "debug.js"), "utf8");
-    const target = /^\/\/ target: settings/.test(src) && settingsWin ? settingsWin : win;
+    const target = { settings: settingsWin, welcome: welcomeWin }[/^\/\/ target: (\w+)/.exec(src)?.[1]] ?? win;
     const result = await target.webContents.executeJavaScript(`(async () => { ${src} })()`, true);
     console.log("[debug]", typeof result === "string" ? result : JSON.stringify(result));
   } catch (e) {

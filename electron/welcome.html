@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'self'" />
+    <title>Welcome</title>
+    <style>
+      :root { --ink: #101018; --paper: #fffdf7; --line: #e6e0d2; --accent: #ff7a2f; --muted: #6b6658; --ok: #2f7a3a; --soft: #fff3e8; }
+      @media (prefers-color-scheme: dark) { :root { --ink: #f3efe4; --paper: #1b1a17; --line: #3a372f; --muted: #a8a294; --ok: #7fd08b; --soft: #2a241d; } }
+      * { box-sizing: border-box; }
+      html, body { height: 100%; }
+      body { margin: 0; font: 14px/1.45 -apple-system, Helvetica, sans-serif; background: var(--paper); color: var(--ink); display: flex; flex-direction: column; user-select: none; }
+      header { display: flex; justify-content: space-between; align-items: center; padding: 16px 22px 0; }
+      .dots { display: flex; gap: 6px; }
+      .dots i { width: 8px; height: 8px; border-radius: 50%; background: var(--line); }
+      .dots i.on { background: var(--accent); }
+      .dots i.done { background: var(--muted); }
+      #step-count { color: var(--muted); font-size: 12px; }
+      main { flex: 1; padding: 6px 22px 0; overflow-y: auto; }
+      .art { font-size: 40px; line-height: 1; margin: 10px 0 4px; }
+      h1 { font-size: 21px; margin: 4px 0 8px; }
+      p { margin: 0 0 10px; }
+      .muted { color: var(--muted); font-size: 12.5px; }
+      kbd { font: 12px ui-monospace, Menlo, monospace; padding: 1px 5px; border: 1.5px solid var(--line); border-radius: 5px; }
+      .status { margin-top: 12px; padding: 9px 12px; border-radius: 9px; background: var(--soft); font-size: 13px; }
+      .status.ok { color: var(--ok); }
+      .choices { display: grid; gap: 6px; margin: 10px 0 6px; }
+      .choice { text-align: left; display: flex; justify-content: space-between; align-items: center; }
+      .chips { display: flex; flex-wrap: wrap; gap: 7px; margin: 12px 0 8px; }
+      .chip { border-radius: 999px; padding: 5px 12px; }
+      .chip[disabled] { opacity: 0.45; cursor: default; }
+      .chip[disabled]:hover { border-color: var(--line); }
+      ul { margin: 6px 0 10px; padding-left: 18px; }
+      li { margin: 3px 0; }
+      label.check { display: flex; gap: 8px; align-items: center; margin-top: 12px; cursor: pointer; }
+      input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--accent); }
+      footer { display: flex; justify-content: space-between; align-items: center; padding: 14px 22px 18px; border-top: 1px solid var(--line); }
+      footer .right { display: flex; gap: 8px; margin-left: auto; }
+      button { font: inherit; color: inherit; padding: 6px 13px; border: 1.5px solid var(--line); border-radius: 8px; background: transparent; cursor: pointer; }
+      button:hover { border-color: var(--accent); }
+      button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+      button.link { border: 0; padding: 6px 0; color: var(--muted); text-decoration: underline; }
+      [hidden] { display: none !important; }
+    </style>
+  </head>
+  <body>
+    <header>
+      <div class="dots" id="dots" aria-hidden="true"></div>
+      <span id="step-count"></span>
+    </header>
+    <main id="step" aria-live="polite"></main>
+    <footer>
+      <button class="link" id="skip">Skip tour</button>
+      <div class="right">
+        <button id="back">Back</button>
+        <button class="primary" id="next">Next</button>
+      </div>
+    </footer>
+    <script src="welcome.js"></script>
+  </body>
+</html>
