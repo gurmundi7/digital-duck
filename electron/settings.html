@@ -34,26 +34,31 @@
       footer a { color: var(--muted); cursor: pointer; text-decoration: underline; }
       #saved { opacity: 0; transition: opacity 0.2s; }
       #saved.on { opacity: 1; }
-      [data-needs-claude].off { opacity: 0.45; pointer-events: none; }
+      .off { opacity: 0.45; pointer-events: none; }
+      [hidden] { display: none !important; }
     </style>
   </head>
   <body>
     <main>
       <h2>Brain</h2>
-      <div class="row"><label for="model">Model<span class="hint">Haiku is quickest. Sonnet and Opus think harder and use more of your plan.</span></label>
-        <select id="model"><option value="haiku">Haiku</option><option value="sonnet">Sonnet</option><option value="opus">Opus</option></select></div>
+      <div class="row"><label for="provider">Who answers<span class="hint">A CLI (Claude Code, Codex, Gemini CLI) can act on your Mac. An API key only talks and searches.</span><span class="err" data-err="provider"></span></label>
+        <select id="provider"></select></div>
+      <div class="row"><label for="model">Model<span class="hint">Pick one, or type any model id the brain knows. The smallest is quickest.</span><span class="err" data-err="model"></span></label>
+        <input type="text" id="model" list="modelList" autocomplete="off" spellcheck="false" /><datalist id="modelList"></datalist></div>
+      <div class="row" id="baseUrlRow"><label for="openaiBaseUrl">OpenAI base URL<span class="hint">Empty for OpenAI itself. Or any OpenAI-compatible server: Ollama (http://localhost:11434/v1), LM Studio, OpenRouter.</span><span class="err" data-err="openaiBaseUrl"></span></label>
+        <input type="text" id="openaiBaseUrl" placeholder="https://api.openai.com/v1" spellcheck="false" /></div>
+      <div class="row" id="keyRow"><span><span id="keyLabel">API key</span><span class="hint">Kept in your Keychain, never in a file.</span></span><button id="key">Set key…</button></div>
       <div id="brainNote" class="hint"></div>
 
       <h2>What the duck can do</h2>
-      <div class="levels" data-needs-claude>
+      <div class="levels" id="levels">
         <label class="level"><input type="radio" name="access" value="chat" /><span><b>Chat only</b><span class="hint">Talks and moves. Runs nothing on your Mac.</span></span></label>
         <label class="level"><input type="radio" name="access" value="open" /><span><b>Open apps, files and links</b><span class="hint">"Open Safari", "open google.com". It can launch things but not change or delete anything.</span></span></label>
         <label class="level"><input type="radio" name="access" value="lookup" /><span><b>Look things up</b><span class="hint">Opening, plus searching the web and reading pages for news, weather and facts.</span></span></label>
-        <label class="level danger"><input type="radio" name="access" value="full" /><span><b>Full access</b><span class="hint">Anything Claude Code can do: run commands and scripts, control apps, change files, without asking you first. Only choose this if you trust everything you say to it, and everything it reads.</span></span></label>
+        <label class="level danger"><input type="radio" name="access" value="full" /><span><b>Full access</b><span class="hint">Anything the CLI can do: run commands and scripts, control apps, change files, without asking you first. Only choose this if you trust everything you say to it, and everything it reads.</span></span></label>
       </div>
       <span class="err" data-err="access"></span>
-      <div class="row" data-needs-claude><label for="mcp">Use my connectors and MCP servers<span class="hint">Calendar, Gmail, Jira and other connectors on your Claude account. Slower.</span></label><input type="checkbox" id="mcp" /></div>
-      <div class="row"><span>Anthropic API key<span class="hint">Only used when Claude Code isn't installed. Kept in your Keychain.</span></span><button id="key">Set key…</button></div>
+      <div class="row" id="mcpRow"><label for="mcp">Use my connectors and MCP servers<span class="hint">Claude Code loads the connectors on your Claude account. Every CLI loads the mcpServers in the config file. Slower.</span></label><input type="checkbox" id="mcp" /></div>
 
       <h2>Voice</h2>
       <div class="row"><label for="voice">Voice</label><span class="inline"><select id="voice"></select><button id="preview">Play</button></span></div>

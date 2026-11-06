@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'self'" />
-    <title>Anthropic API key</title>
+    <title>API key</title>
     <style>
       body { margin: 0; padding: 18px; font: 13px -apple-system, Helvetica, sans-serif; background: #fffdf7; color: #101018; }
       p { margin: 0 0 10px; line-height: 1.4; }
@@ -15,8 +15,8 @@
     </style>
   </head>
   <body>
-    <p>No <code>claude</code> CLI found, so the duck can chat through the Anthropic API instead. Paste a key from console.anthropic.com. It is kept in your login Keychain, never in a file.</p>
-    <input id="key" type="password" placeholder="sk-ant-…" autofocus />
+    <p id="intro"></p>
+    <input id="key" type="password" placeholder="Paste the key" autofocus />
     <div class="row">
       <button id="remove">Remove key</button>
       <button id="cancel">Cancel</button>

@@ -15,7 +15,12 @@ const DEFAULT_CONFIG = {
   rate: 190,
   // Spoken voice per skin; skins not listed use voice/rate above. Any name from `say -v '?'`.
   voices: {},
+  // Which brain answers: auto (Claude Code, else the Anthropic API), claude, codex, gemini-cli,
+  // anthropic, openai or gemini. See providers.cjs.
+  provider: "auto",
   model: "haiku",
+  // Empty for api.openai.com; any OpenAI-compatible server otherwise (Ollama, LM Studio, OpenRouter).
+  openaiBaseUrl: "",
   extraArgs: [],
   // What the brain may run on the Mac: chat, open, lookup or full (see settings.cjs).
   access: "chat",
