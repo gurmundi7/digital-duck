@@ -518,7 +518,8 @@ async function ask(text) {
   const reply = raw.replace(ACTION_TAG, "").replace(/\s{2,}/g, " ").trim() || "quack!";
   bubble.show(reply, { ttlMs: Math.min(30000, 4000 + reply.length * 60) });
   audio.chirp(sim.variant);
-  if (!res?.error && !res?.direct) pet.tourEvent("replied");
+  if (res?.error) pet.tourEvent("reply-failed", res.error);
+  else if (!res?.direct) pet.tourEvent("replied");
   for (const a of actions) runBodyAction(a);
   if (!audio.muted) pet.say(reply);
   else behaviour.setChatting(false);

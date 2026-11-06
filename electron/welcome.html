@@ -24,8 +24,19 @@
       kbd { font: 12px ui-monospace, Menlo, monospace; padding: 1px 5px; border: 1.5px solid var(--line); border-radius: 5px; }
       .status { margin-top: 12px; padding: 9px 12px; border-radius: 9px; background: var(--soft); font-size: 13px; }
       .status.ok { color: var(--ok); }
-      .choices { display: grid; gap: 6px; margin: 10px 0 6px; }
-      .choice { text-align: left; display: flex; justify-content: space-between; align-items: center; }
+      .status + p, .status + .row { margin-top: 12px; }
+      .row { display: flex; gap: 16px; align-items: center; }
+      .choices { display: grid; gap: 6px; margin: 10px 0 8px; }
+      .choice { text-align: left; display: flex; flex-direction: column; padding: 5px 11px; line-height: 1.3; }
+      .choice .muted { font-size: 12px; }
+      ol.steps { margin: 8px 0 12px; padding-left: 20px; }
+      ol.steps li { margin: 0 0 12px; }
+      ol.steps li > button { margin-top: 6px; }
+      .cmd { display: flex; align-items: center; gap: 8px; margin-top: 6px; padding: 5px 5px 5px 10px; border: 1.5px solid var(--line); border-radius: 8px; user-select: text; }
+      .cmd code { flex: 1; font: 12px ui-monospace, Menlo, monospace; overflow-wrap: anywhere; }
+      .cmd button { padding: 3px 10px; font-size: 12.5px; }
+      .keys { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+      button[disabled] { opacity: 0.5; cursor: default; }
       .chips { display: flex; flex-wrap: wrap; gap: 7px; margin: 12px 0 8px; }
       .chip { border-radius: 999px; padding: 5px 12px; }
       .chip[disabled] { opacity: 0.45; cursor: default; }
