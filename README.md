@@ -60,7 +60,7 @@ It is [Pollen Robotics](https://www.pollen-robotics.com/)' Microduck in simulati
 </tr>
 </table>
 
-It also talks back through Claude, keeps your Mac awake when you ask, naps, sulks when ignored, likes being petted and chases a beach ball.
+It also talks back through Claude, Codex or Gemini, keeps your Mac awake when you ask, naps, sulks when ignored, likes being petted and chases a beach ball.
 
 ## Install
 
@@ -79,7 +79,7 @@ A 🦆 appears in the menu bar. That is the whole setup.
 - **Controls your music.** "Pause the music", "next song", "skip this ad", "what's playing?", "volume to 30", or the keys Control+Option+Space, Left, Right, Up and Down. Works with whatever the Mac shows as Now Playing: YouTube Music in a browser, Spotify, Music. Needs `brew install media-control`; volume works without it. It pauses the music while you talk to it and plays it again after its answer.
 - **Keeps your Mac awake.** Menu → Keep the Mac awake, or "keep the screen on for 2 hours", "let it sleep". It ends when you quit, and a closed lid still sleeps the Mac.
 - **Helps a bit.** "Remind me at 3 to call Sam", "in 20 minutes", "focus for 45 minutes". Reminders stay on your Mac.
-- **Does things on your Mac, if you let it.** Opens apps and links, looks things up on the web, or with full access runs anything Claude Code can. See [What the duck can do](#what-the-duck-can-do).
+- **Does things on your Mac, if you let it.** Opens apps and links, looks things up on the web, or with full access runs anything its CLI can. See [What the duck can do](#what-the-duck-can-do).
 - **Four colours.** Classic, charcoal, purple and blue, the four printed robots.
 - **Sleeps.** Left alone it sits, then sleeps with the physics paused and near zero CPU.
 
@@ -87,25 +87,38 @@ Right-click the duck, or click 🦆 in the menu bar, for everything else. **Sett
 
 ## Chat
 
-Chat needs a Claude brain. Either works:
+Chat needs one brain. Pick it under Settings → Brain → **Who answers**:
 
-- **Claude Code.** If the `claude` CLI is installed and logged in, the duck uses it. Nothing to set up. Replies use your Claude account.
-- **An Anthropic API key.** Without the CLI, open Settings → Anthropic API key… and paste a key from [console.anthropic.com](https://console.anthropic.com). It is stored in your login Keychain, never in a file.
+| Brain | What it needs | What it can do on your Mac |
+|---|---|---|
+| **Automatic** (default) | Claude Code if installed, otherwise an Anthropic API key | as below |
+| **Claude Code** | the `claude` CLI, logged in | all four levels |
+| **Codex CLI** | the `codex` CLI, logged in with `codex login`, or an OpenAI API key | all four levels |
+| **Gemini CLI** | the `gemini` CLI, logged in, or a Gemini API key | all four levels |
+| **Anthropic API** | a key from [console.anthropic.com](https://console.anthropic.com) | open things, look things up |
+| **OpenAI API** | a key from [platform.openai.com](https://platform.openai.com/api-keys), or any OpenAI-compatible server | open things, look things up |
+| **Gemini API** | a key from [aistudio.google.com](https://aistudio.google.com/apikey) | open things, look things up (Google Search) |
 
-Without either, the duck still walks, climbs and plays. It just can't talk back.
+API keys go in through the key button under Brain and are stored in your login Keychain, never in a file. The `ANTHROPIC_API_KEY`, `OPENAI_API_KEY` and `GEMINI_API_KEY` environment variables work too. Codex and Gemini CLI use the matching saved key only when they have no login of their own, so a ChatGPT login is never overridden.
 
-Settings → Model picks Haiku (quickest), Sonnet or Opus.
+**OpenAI-compatible servers.** Under OpenAI API, set a base URL such as `http://localhost:11434/v1` for Ollama, or LM Studio, OpenRouter or Groq. A local server needs no key. Web search only works on OpenAI itself.
+
+Without a brain, the duck still walks, climbs and plays. It just can't talk back.
+
+Settings → Model offers presets for each brain (Haiku, Sonnet or Opus on Claude) and takes any model id you type. A CLI left blank uses its own default model.
 
 ## What the duck can do
 
-A new duck can only talk. Settings → **What the duck can do** has four levels (they need Claude Code; the API key brain only chats):
+A new duck can only talk. Settings → **What the duck can do** has four levels. A CLI brain can use all four; an API brain stops at look things up, since it has no shell:
 
 1. **Chat only.** The default. Runs nothing on your Mac.
 2. **Open apps, files and links.** "Open Safari", "open google.com", "open my Downloads". It can launch things but cannot change or delete anything.
-3. **Look things up.** Opening, plus web search and reading web pages, for news, weather and facts.
-4. **Full access.** Anything Claude Code can do: run commands and scripts, control apps with AppleScript, change files, with no confirmation. Pick this only if you trust everything you say to it, and everything it reads, since a web page or email it reads could try to steer it.
+3. **Look things up.** Opening, plus web search and reading web pages, for news, weather and facts. Each brain uses its own web search.
+4. **Full access.** Anything the CLI can do: run commands and scripts, control apps with AppleScript, change files, with no confirmation. Pick this only if you trust everything you say to it, and everything it reads, since a web page or email it reads could try to steer it.
 
-Advanced: flags in `extraArgs` in the config go to the `claude` CLI as they are.
+Claude Code opens things itself. Every other brain asks for it with an `[open: …]` tag at the end of its reply, and the duck runs `open` with that one target, never through a shell. On chat only, Codex runs in its read-only sandbox and Gemini CLI in plan mode.
+
+Advanced: flags in `extraArgs` in the config go to the picked CLI as they are.
 
 ## Off until you turn them on
 
@@ -116,7 +129,7 @@ Each of these is a switch in Settings:
 - **Nudges.** Meeting reminders, stretch breaks, and lines another tool appends to a JSONL file (pick the file in Settings; one `{"message", "source"}` object per line).
 - **Pull request watch.** Uses your `gh` CLI to tell you when checks go red or green, or a review lands.
 - **Morning briefing and end-of-day recap.**
-- **Connectors and MCP servers.** Lets Claude Code use whatever your Claude account has linked (Calendar, Gmail, Slack, Jira and so on) and any servers under `mcpServers` in the config, so the duck can answer from them. Needs Claude Code.
+- **Connectors and MCP servers.** Lets Claude Code use whatever your Claude account has linked (Calendar, Gmail, Slack, Jira and so on), and any CLI brain use the servers under `mcpServers` in the config, so the duck can answer from them. Needs a CLI brain.
 
 Everything is saved to `~/Library/Application Support/Digital Duck/config.json`. **Edit raw config…** at the bottom of Settings opens it.
 
@@ -135,15 +148,15 @@ What it reads, all on your Mac:
 
 What it sends:
 
-- **Chat** goes to Anthropic, through your Claude Code CLI or your API key: what you type or say, a short context line (date, time, how the duck feels, whether you are on a call), its character description, and its notebook of things you asked it to remember. Nothing else.
-- **Look things up and Full access** let it search the web through Claude Code, and with Full access, read anything on your Mac it decides it needs to answer you.
-- **Connectors**, only with that switch on: Claude Code can read whatever your linked connectors can reach, and the morning briefing asks it about your mail and meetings.
+- **Chat** goes to the company behind the brain you picked (Anthropic, OpenAI or Google), or to the OpenAI-compatible server you set, through its CLI or your API key: what you type or say, a short context line (date, time, how the duck feels, whether you are on a call), its character description, and its notebook of things you asked it to remember. Nothing else.
+- **Look things up and Full access** let it search the web through that brain, and with Full access, read anything on your Mac it decides it needs to answer you.
+- **Connectors**, only with that switch on: the CLI brain can read whatever your linked connectors can reach, and the morning briefing asks it about your mail and meetings.
 
 No analytics, no telemetry, no accounts. Its notebook, reminders and chat history stay in the config folder. So does `app.log`, a log of what the app did, kept under about 4 MB. It can include reminder and nudge text, song titles and app names, and never leaves your Mac.
 
 ## How it works
 
-A see-through Electron window covers the screen. Inside, Pollen's MuJoCo model runs in WebAssembly and their trained policies run through ONNX Runtime, 50 times a second, drawn with three.js. A small Swift helper lists your windows, and the top edge of each becomes a ledge in the physics. Chat goes to Claude, and macOS `say` gives it a voice.
+A see-through Electron window covers the screen. Inside, Pollen's MuJoCo model runs in WebAssembly and their trained policies run through ONNX Runtime, 50 times a second, drawn with three.js. A small Swift helper lists your windows, and the top edge of each becomes a ledge in the physics. Chat goes to the brain you picked, and macOS `say` gives it a voice.
 
 ## Build from source
 
@@ -176,7 +189,6 @@ sim/        Pollen's simulator source and assets, unchanged (Apache 2.0)
   - start at login through a LaunchAgent (checkouts) or a macOS login item
   - voice input through `brew install whisper.cpp`
   - music detection and control through AppleScript and `media-control`, and the Mac volume
-- **More brains.** Today the duck talks through Claude Code or an Anthropic API key. Next: a local model through Ollama, OpenAI's Codex CLI, OpenRouter, and any OpenAI-compatible endpoint, each as a pick in Settings → Brain. The app-running levels stay tied to an agent CLI that can take tool permissions.
 
 ## Contributing
 

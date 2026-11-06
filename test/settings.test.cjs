@@ -46,7 +46,7 @@ test("valid settings land in the config", () => {
 
 test("bad values are refused with a message and keep the old value", () => {
   const current = base();
-  const { config, errors } = validateSettings({ model: "gpt", "work.briefingTime": "25:00", rate: 9000, hotkey: "D", access: "root" }, current);
+  const { config, errors } = validateSettings({ model: "gpt; rm -rf ~", "work.briefingTime": "25:00", rate: 9000, hotkey: "D", access: "root" }, current);
   assert.deepStrictEqual(Object.keys(errors).sort(), ["access", "hotkey", "model", "rate", "work.briefingTime"]);
   assert.strictEqual(config.model, current.model);
   assert.strictEqual(config.work.briefingTime, current.work.briefingTime);
@@ -90,4 +90,32 @@ test("music keys take arrows, and an empty key turns one off", () => {
   assert.strictEqual(config.musicKeys.volumeUp, DEFAULT_CONFIG.musicKeys.volumeUp);
   assert.ok(errors["musicKeys.volumeUp"]);
   assert.strictEqual(settingsView(config)["musicKeys.next"], "Control+Alt+Right");
+});
+
+test("picking a provider brings its default model, unless a model comes with it", () => {
+  const { config, errors } = validateSettings({ provider: "gemini" }, base());
+  assert.deepStrictEqual(errors, {});
+  assert.strictEqual(config.provider, "gemini");
+  assert.strictEqual(config.model, "gemini-3.6-flash");
+  assert.strictEqual(validateSettings({ provider: "codex" }, base()).config.model, "");
+  assert.strictEqual(validateSettings({ provider: "openai", model: "gpt-6.1-terra" }, base()).config.model, "gpt-6.1-terra");
+  assert.deepStrictEqual(Object.keys(validateSettings({ provider: "skynet" }, base()).errors), ["provider"]);
+});
+
+test("the OpenAI base URL is empty or an http(s) URL", () => {
+  assert.strictEqual(validateSettings({ openaiBaseUrl: " http://localhost:11434/v1 " }, base()).config.openaiBaseUrl, "http://localhost:11434/v1");
+  assert.deepStrictEqual(Object.keys(validateSettings({ openaiBaseUrl: "file:///etc/passwd" }, base()).errors), ["openaiBaseUrl"]);
+});
+
+test("a brain without Claude Code's own `open` is told to use the [open: …] tag", () => {
+  assert.match(toolPrompt({ access: "open" }, "codex"), /\[open: Calculator\]/);
+  assert.match(toolPrompt({ access: "open" }, "claude"), /`open -a Calculator`/);
+  // An API cannot do "full"; it gets the lookup prompt instead of one promising a shell.
+  assert.doesNotMatch(toolPrompt({ access: "full" }, "gemini"), /osascript/);
+  assert.match(toolPrompt({ access: "full" }, "gemini"), /search the web/);
+});
+
+test("settings show the provider and an old config as automatic", () => {
+  assert.strictEqual(settingsView({ ...base(), provider: undefined }).provider, "auto");
+  assert.strictEqual(settingsView({ ...base(), provider: "openai" }).provider, "openai");
 });

@@ -10,8 +10,10 @@ const { createPresence } = require("./presence.cjs");
 const { createPrWatch } = require("./prwatch.cjs");
 const { createWorkday } = require("./workday.cjs");
 const { APP_ID, APP_NAME, DEFAULT_CONFIG, BASE_VARIANTS, loadSkinPack } = require("./config.cjs");
-const { toolArgs, toolPrompt, validateSettings, settingsView, parseVoices } = require("./settings.cjs");
+const { accessLevel, toolArgs, toolPrompt, validateSettings, settingsView, parseVoices } = require("./settings.cjs");
 const { createApiBrain, saveKey, readKey, deleteKey } = require("./apibrain.cjs");
+const { PROVIDERS, API_PROVIDERS, CLI_KEYS, resolveProvider, modelFor, levelFor, takeOpenTags, openArgs } = require("./providers.cjs");
+const { createCliBrain, withCliKey } = require("./clibrain.cjs");
 const { attachLogFile } = require("./logfile.cjs");
 const { createBrainProcess } = require("./brainproc.cjs");
 const path = require("node:path");
@@ -37,9 +39,9 @@ const MIME = {
   ".map": "application/json",
 };
 
-// The duck chats through the owner's own `claude` CLI, or the API key fallback.
-// What it may run on the Mac is the access level picked in Settings (settings.cjs),
-// plus any flags in "extraArgs", which go to that CLI verbatim.
+// The duck chats through the brain picked in Settings (providers.cjs): Claude Code, Codex or
+// Gemini CLI, or the Anthropic, OpenAI or Gemini API with a Keychain key. What it may run on the
+// Mac is the access level (settings.cjs), plus any flags in "extraArgs", which go to that CLI verbatim.
 const LAUNCH_AGENT = path.join(os.homedir(), "Library", "LaunchAgents", `${APP_ID}.plist`);
 
 const readJson = (p, fallback) => { try { return { ...fallback, ...JSON.parse(fs.readFileSync(p, "utf8")) }; } catch { return fallback; } };
@@ -75,6 +77,23 @@ function rememberLines(lines) {
   fs.writeFileSync(MEMORY_PATH, `${existing}${existing ? "\n" : ""}${add.join("\n")}\n`);
 }
 const VARIANT_SET = Object.fromEntries([...BASE_VARIANTS, ...Object.keys(SKIN_PACK)].map((v) => [v, 1]));
+// A Finder-launched app has a bare PATH, so the usual install folders are tried by hand.
+function resolveBin(name, envVar, extra = []) {
+  const candidates = [
+    process.env[envVar],
+    ...extra,
+    path.join(os.homedir(), ".local", "bin", name),
+    "/opt/homebrew/bin/" + name, "/usr/local/bin/" + name,
+    path.join(os.homedir(), ".npm-global", "bin", name),
+    path.join(os.homedir(), ".bun", "bin", name),
+    ...(process.env.PATH ?? "").split(":").filter(Boolean).map((d) => path.join(d, name)),
+  ].filter(Boolean);
+  return candidates.find((p) => { try { fs.accessSync(p, fs.constants.X_OK); return true; } catch { return false; } }) ?? null;
+}
+const CLAUDE_BIN = resolveBin("claude", "CLAUDE_BIN", [path.join(os.homedir(), ".claude", "local", "claude")]);
+const CLI_BINS = { claude: CLAUDE_BIN, codex: resolveBin("codex", "CODEX_BIN"), "gemini-cli": resolveBin("gemini", "GEMINI_BIN") };
+function activeProvider() { return resolveProvider(config, { claude: CLAUDE_BIN }); }
+
 const MOVES = `You have a body and these moves: [sit] [stand] [roll] [peck] [quack] [dance] [come] (walk over to the cursor) [hop] (jump onto a window above you) [off] (step off the window you stand on) [skate] (put on roller skates, fast) [walk] (back on legs) [ball] (a beach ball to chase and kick) [noball] [kick] [sleep] [nap] (a short nap) [nap 5s] or [nap 10m] (sleep for exactly that long, then wake up by yourself; use this whenever a length is asked for) [quiet] (quiet mode: no sounds or voice, replies still appear as text) [loud] (sounds back on) [awake] (keep the Mac and its screen awake until told otherwise, what caffeinate does) [awake 120] (for that many minutes) [awake off] (let it sleep again) [color ${Object.keys(VARIANT_SET).join("|")}] [focus N] (a focus block of N minutes: you sit quietly and hold all nudges) [mail] (fetch and deliver the owner's briefing: mail, calendar, tickets) [remind HH:MM text] or [remind +Nm text] (set a reminder; the current date and time are in the context line, so convert 'in 20 minutes' or 'at 3' yourself). Whenever you are asked to do one of them, or it fits the mood, end your reply with that tag, for example: 'Taking a seat. [sit]' or 'Wiggle time! [dance]'. The tag is executed by your body and never spoken; never say you cannot do these.`;
 const characterFor = (v) => {
   const skin = SKIN_PACK[v]?.character;
@@ -88,7 +107,7 @@ const characterFor = (v) => {
 const personaFor = (v) => [
   ...characterFor(v),
   MOVES,
-  toolPrompt(config),
+  toolPrompt(config, activeProvider()),
   "When you have tools, use them instead of saying you cannot: check the clock, open things, look at the screen, and then report what you did in one line.",
   "You keep a small notebook. When the owner tells you something worth keeping (their name, a routine, a preference, a fact to recall later) or asks you to remember something, end your reply with [remember: one short line]. Notes are kept across conversations.",
   "If you are asked to do something you have no tool for, say so briefly instead of pretending, and mention that the owner can allow more under Settings, What the duck can do.",
@@ -96,12 +115,13 @@ const personaFor = (v) => [
 let PERSONA = personaFor(config.variant);
 
 let session = readJson(SESSION_PATH, { id: null, fingerprint: null });
-let brainFingerprint = JSON.stringify([config.model, toolArgs(config), config.mcp, PERSONA]);
+const fingerprint = () => { const p = activeProvider(); return JSON.stringify([p, modelFor(p, config), levelFor(p, accessLevel(config)), toolArgs(config), config.mcp, config.openaiBaseUrl, PERSONA]); };
+let brainFingerprint = fingerprint();
 // A new persona (skin change) or brain config starts a fresh conversation,
 // so the pet does not keep its old name mid chat.
 function refreshBrain() {
   PERSONA = personaFor(config.variant);
-  brainFingerprint = JSON.stringify([config.model, toolArgs(config), config.mcp, PERSONA]);
+  brainFingerprint = fingerprint();
   if (session.id && session.fingerprint !== brainFingerprint) {
     session = { id: null, fingerprint: brainFingerprint };
     try { fs.unlinkSync(SESSION_PATH); } catch { /* fine */ }
@@ -134,17 +154,6 @@ function setVariant(v) {
 }
 let skating = false;
 
-function resolveClaude() {
-  const candidates = [
-    process.env.CLAUDE_BIN,
-    path.join(os.homedir(), ".local", "bin", "claude"),
-    path.join(os.homedir(), ".claude", "local", "claude"),
-    "/opt/homebrew/bin/claude", "/usr/local/bin/claude",
-    ...(process.env.PATH ?? "").split(":").filter(Boolean).map((d) => path.join(d, "claude")),
-  ].filter(Boolean);
-  return candidates.find((p) => { try { fs.accessSync(p, fs.constants.X_OK); return true; } catch { return false; } }) ?? null;
-}
-const CLAUDE_BIN = resolveClaude();
 
 function targetDisplay() {
   const all = screen.getAllDisplays();
@@ -250,7 +259,7 @@ function createTray() {
   tray.on("right-click", () => tray.popUpContextMenu(buildMenu()));
 }
 
-// ── Brain: one chat conversation with the owner's claude CLI ────────────
+// ── Brain: one chat conversation with whichever brain is picked ─────────
 function contextLine(extra = "") {
   const d = new Date();
   const when = d.toLocaleString([], { weekday: "long", day: "numeric", month: "short", hour: "numeric", minute: "2-digit" });
@@ -266,25 +275,67 @@ function mcpArgs() {
   return ["--setting-sources", "project", "--mcp-config", MCP_CONFIG_PATH];
 }
 const apiBrain = createApiBrain({ historyPath: path.join(STATE_DIR, "history.json") });
-function askBrain(text, opts = {}) {
-  if (CLAUDE_BIN) return askClaude(text, opts);
-  const memory = readMemory();
-  return apiBrain.ask({
-    text: `${contextLine(opts.context ?? "")}\n\n${text}`,
-    system: memory ? `${PERSONA}\n\nYour notebook:\n${memory}` : PERSONA,
-    model: config.model,
-  }).then((res) => {
-    const notes = [...(res.text ?? "").matchAll(/\[remember:\s*([^\]]+)\]/gi)].map((m) => m[1]);
-    if (notes.length) rememberLines(notes);
-    return { ...res, text: (res.text ?? "").replace(/\[remember:[^\]]*\]/gi, "").trim() };
+const systemPrompt = () => { const memory = readMemory(); return memory ? `${PERSONA}\n\nYour notebook:\n${memory}` : PERSONA; };
+async function askBrain(text, opts = {}) {
+  const provider = activeProvider();
+  const level = levelFor(provider, accessLevel(config));
+  let res;
+  if (provider === "claude") res = await askClaude(text, opts);
+  else if (PROVIDERS[provider].kind === "cli") res = await askCli(provider, text, opts);
+  else {
+    res = await apiBrain.ask({
+      provider, text: `${contextLine(opts.context ?? "")}\n\n${text}`, system: systemPrompt(),
+      model: modelFor(provider, config), lookup: level === "lookup", baseUrl: config.openaiBaseUrl,
+    });
+  }
+  if (res.error) return res;
+  const notes = [...(res.text ?? "").matchAll(/\[remember:\s*([^\]]+)\]/gi)].map((m) => m[1]);
+  if (notes.length) rememberLines(notes);
+  const opened = takeOpenTags((res.text ?? "").replace(/\[remember:[^\]]*\]/gi, ""));
+  if (level !== "chat") for (const target of opened.targets) openTarget(target);
+  return { ...res, text: opened.text };
+}
+// What a brain without its own shell asked to open: `open` with the target as one argument, no shell.
+function openTarget(target) {
+  const args = openArgs(target, os.homedir());
+  if (!args) return console.error("[open] refused", target.slice(0, 80));
+  execFile("open", args, (err) => { if (err) console.error("[open]", target.slice(0, 80), err.message.slice(0, 120)); });
+}
+// Codex and Gemini CLI: one process per question, resumed from the last one's session.
+const cliBrains = {};
+const cliEnv = {};
+// `codex login status` exits 1 when Codex has neither a ChatGPT login nor a key of its own.
+const codexLoggedIn = (bin, env) => new Promise((resolve) => execFile(bin, ["login", "status"], { env, timeout: 10000 }, (err) => resolve(!err)));
+async function askCli(provider, text, { retry = true, context = "" } = {}) {
+  const bin = CLI_BINS[provider];
+  if (!bin) return { text: "", error: `${PROVIDERS[provider].label} isn't installed: pick another brain under Settings, Brain` };
+  const env = brainEnv();
+  cliEnv[provider] = await withCliKey(provider, env, { readKey, loggedIn: () => codexLoggedIn(bin, env) });
+  cliBrains[provider] ??= createCliBrain({ provider, spawn, bin, stateDir: STATE_DIR, env: () => cliEnv[provider], log: (m) => console.info(m) });
+  const started = Date.now();
+  const res = await cliBrains[provider].ask({
+    prompt: `${contextLine(context)}\n\n${text}`, persona: systemPrompt(), model: modelFor(provider, config),
+    level: levelFor(provider, accessLevel(config)), mcp: !!config.mcp, mcpServers: config.mcpServers, extraArgs: config.extraArgs ?? [],
+    resume: session.id,
   });
+  console.info(`[brain] ${provider} answered in ${((Date.now() - started) / 1000).toFixed(1)}s${res.error ? " with an error" : ""}`);
+  if (!res.error) {
+    if (res.sessionId) { session = { id: res.sessionId, fingerprint: brainFingerprint }; fs.writeFileSync(SESSION_PATH, JSON.stringify(session)); }
+    return { text: res.text };
+  }
+  // A session the CLI no longer has: start a fresh conversation once.
+  if (retry && session.id && res.error !== "busy") {
+    session = { id: null, fingerprint: brainFingerprint };
+    try { fs.unlinkSync(SESSION_PATH); } catch { /* fine */ }
+    return askCli(provider, text, { retry: false, context });
+  }
+  return res;
 }
 // The brain's arguments without the question; a change here (model, tools, notebook) restarts it.
 function brainArgs() {
-  const memory = readMemory();
   return [
-    "--model", config.model,
-    "--append-system-prompt", memory ? `${PERSONA}\n\nYour notebook:\n${memory}` : PERSONA,
+    "--model", modelFor("claude", config),
+    "--append-system-prompt", systemPrompt(),
     // With mcp on, the account's connectors (Calendar, Gmail, Jira, Slack...) load,
     // plus any servers listed in config.mcpServers.
     ...mcpArgs(),
@@ -302,12 +353,7 @@ async function askClaude(text, { retry = true, context = "" } = {}) {
     session = { id: res.session_id, fingerprint: brainFingerprint };
     fs.writeFileSync(SESSION_PATH, JSON.stringify(session));
   }
-  if (!res.is_error) {
-    const result = res.result ?? "";
-    const notes = [...result.matchAll(/\[remember:\s*([^\]]+)\]/gi)].map((m) => m[1]);
-    if (notes.length) rememberLines(notes);
-    return { text: result.replace(/\[remember:[^\]]*\]/gi, "").trim() };
-  }
+  if (!res.is_error) return { text: res.result ?? "" };
   const msg = String(res.result ?? "").trim() || "no answer";
   // A stale session id is the usual cause; start a fresh conversation once.
   if (retry && session.id && /session|resume|No conversation/i.test(msg)) {
@@ -368,7 +414,8 @@ const brainEnv = () => {
   const env = { ...process.env };
   delete env.CLAUDECODE;
   delete env.CLAUDE_CODE_ENTRYPOINT;
-  env.PATH = `${CLAUDE_BIN ? path.dirname(CLAUDE_BIN) : ""}:/opt/homebrew/bin:/usr/local/bin:${env.PATH ?? "/usr/bin:/bin"}`;
+  const binDirs = [...new Set(Object.values(CLI_BINS).filter(Boolean).map((b) => path.dirname(b)))];
+  env.PATH = `${[...binDirs, "/opt/homebrew/bin", "/usr/local/bin"].join(":")}:${env.PATH ?? "/usr/bin:/bin"}`;
   return env;
 };
 const callWhy = () => callReasons({ frontOwner: lastWindows[0]?.owner, micBusy, duckListening });
@@ -584,20 +631,23 @@ function setLoginItem(on) {
 
 // ── API key prompt: a small window; the key goes straight to the Keychain ──
 let keyWin = null;
-function openKeyPrompt() {
-  if (keyWin) { keyWin.show(); keyWin.focus(); return; }
+function openKeyPrompt(provider) {
+  const spec = API_PROVIDERS[provider] ?? API_PROVIDERS.anthropic;
+  if (keyWin) keyWin.close();
   keyWin = new BrowserWindow({
-    width: 440, height: 230, resizable: false, minimizable: false, maximizable: false, alwaysOnTop: true, title: "Anthropic API key",
+    width: 440, height: 230, resizable: false, minimizable: false, maximizable: false, alwaysOnTop: true, title: `${spec.label} key`,
     webPreferences: { preload: path.join(__dirname, "keyprompt-preload.cjs"), contextIsolation: true, sandbox: true },
   });
   keyWin.setMenu(null);
-  keyWin.loadFile(path.join(__dirname, "keyprompt.html"));
+  keyWin.loadFile(path.join(__dirname, "keyprompt.html"), { query: { provider: API_PROVIDERS[provider] ? provider : "anthropic" } });
   keyWin.on("closed", () => { keyWin = null; });
   app.focus({ steal: true });
 }
-ipcMain.handle("key:save", async (_e, key) => { const r = await saveKey(key); if (r.ok) apiBrain.reset(); return r; });
-ipcMain.handle("key:remove", () => deleteKey());
-ipcMain.handle("key:has", async () => !!(await readKey()));
+const keyProvider = (p) => (API_PROVIDERS[p] ? p : "anthropic");
+ipcMain.handle("key:info", (_e, p) => { const s = API_PROVIDERS[keyProvider(p)]; return { label: s.label, hint: s.keyHint, url: s.keyUrl }; });
+ipcMain.handle("key:save", (_e, p, key) => saveKey(key, { provider: keyProvider(p) }));
+ipcMain.handle("key:remove", (_e, p) => deleteKey(keyProvider(p)));
+ipcMain.handle("key:has", async (_e, p) => !!(await readKey(keyProvider(p))));
 
 // ── Settings window: every change is checked, saved and applied at once ──
 let settingsWin = null;
@@ -624,7 +674,8 @@ function applySettings(patch) {
   Object.assign(config.pet, next.pet);
   Object.assign(config.work, next.work);
   Object.assign(config.nudges, next.nudges);
-  for (const k of ["model", "access", "mcp", "voice", "rate", "listen", "hotkey", "typeHotkey", "display", "name"]) config[k] = next[k];
+  const brainBefore = activeProvider();
+  for (const k of ["provider", "model", "openaiBaseUrl", "access", "mcp", "voice", "rate", "listen", "hotkey", "typeHotkey", "display", "name"]) config[k] = next[k];
   const musicKeysBefore = { ...config.musicKeys };
   Object.assign(config.musicKeys, next.musicKeys);
   if (!("openApps" in next)) delete config.openApps;
@@ -640,14 +691,17 @@ function applySettings(patch) {
   if (String(before.display) !== String(config.display)) placeWindow({ reload: true });
   if (before.name !== config.name) send({ type: "config", name: config.name, variant });
   send({ type: "settings", pet: config.pet, work: config.work });
+  if (brainBefore !== activeProvider()) { brainProc?.stop(); for (const b of Object.values(cliBrains)) b.stop(); }
   refreshBrain();
-  return { ok: Object.keys(errors).length === 0, errors };
+  return { ok: Object.keys(errors).length === 0, errors, values: settingsView(config), active: activeProvider() };
 }
 ipcMain.handle("settings:load", () => ({
   values: settingsView(config),
   voices: voices(),
   displays: screen.getAllDisplays().map((d) => ({ id: d.id, label: displayLabel(d) })),
   claude: !!CLAUDE_BIN,
+  active: activeProvider(),
+  providers: Object.entries(PROVIDERS).map(([id, p]) => ({ id, label: p.label, kind: p.kind, models: p.models, levels: p.levels, installed: p.kind !== "cli" || !!CLI_BINS[id], keyFrom: CLI_KEYS[id]?.from })),
   login: loginItemOn(),
 }));
 ipcMain.handle("settings:save", (_e, patch) => applySettings(patch && typeof patch === "object" ? patch : {}));
@@ -661,7 +715,7 @@ ipcMain.handle("settings:pick-file", async () => {
   return r.canceled ? null : r.filePaths[0];
 });
 ipcMain.handle("settings:login", (_e, on) => setLoginItem(!!on));
-ipcMain.on("settings:key", () => openKeyPrompt());
+ipcMain.on("settings:key", (_e, provider) => openKeyPrompt(provider));
 ipcMain.on("settings:raw", () => spawn("open", ["-t", CONFIG_PATH]));
 
 // ── Voice in: mic permission, then local whisper.cpp on the renderer's WAV ─
@@ -781,18 +835,18 @@ app.whenReady().then(() => {
   registerListenHotkey();
   registerTypeHotkey();
   registerMusicKeys();
-  if (CLAUDE_BIN) brain().warm(brainArgs(), session.id);
+  if (activeProvider() === "claude" && CLAUDE_BIN) brain().warm(brainArgs(), session.id);
   for (const ev of ["display-added", "display-removed", "display-metrics-changed"]) {
     screen.on(ev, () => setTimeout(() => placeWindow({ reload: true }), 500));
   }
   // Opening the app again while a duck runs: answer on screen, since there is no Dock icon or window to notice.
   app.on("second-instance", () => { win?.show(); send({ type: "quack" }); send({ type: "say", value: "Already here. One duck is plenty." }); });
-  console.log(`[duck] brain: ${CLAUDE_BIN ?? "Anthropic API"} (${config.model}), voice: ${config.voice}, whisper: ${resolveWhisper().bin ?? "missing"} / ${resolveWhisper().model ? "model ok" : "no model"}`);
+  console.info(`[duck] brain: ${PROVIDERS[activeProvider()].label}${CLI_BINS[activeProvider()] ? ` at ${CLI_BINS[activeProvider()]}` : ""} (${modelFor(activeProvider(), config) || "default model"}), voice: ${config.voice}, whisper: ${resolveWhisper().bin ?? "missing"} / ${resolveWhisper().model ? "model ok" : "no model"}`);
   console.log(`[duck] displays: ${screen.getAllDisplays().map((d) => `${d.id}=${displayLabel(d)}`).join("; ")}; using ${targetDisplay().id} bounds ${JSON.stringify(win.getBounds())}`);
 });
 
 app.on("window-all-closed", () => app.quit());
-app.on("before-quit", () => { app.isQuitting = true; brainProc?.stop(); awake.stop("quit"); stopSaying(); globalShortcut.unregisterAll(); winlistChild?.kill(); micwatchChild?.kill(); nudges?.stop(); workday?.stop(); reminders?.stop(); prwatch?.stop(); presence?.stop(); });
+app.on("before-quit", () => { app.isQuitting = true; brainProc?.stop(); for (const b of Object.values(cliBrains)) b.stop(); awake.stop("quit"); stopSaying(); globalShortcut.unregisterAll(); winlistChild?.kill(); micwatchChild?.kill(); nudges?.stop(); workday?.stop(); reminders?.stop(); prwatch?.stop(); presence?.stop(); });
 
 // Debug: `kill -USR2 <pid>` writes snap.png to the config folder and logs the duck's state.
 process.on("SIGUSR2", async () => {

@@ -1,8 +1,8 @@
 // What the Settings window may change, how each value is checked, and what the
 // duck is allowed to run at each access level. No Electron here, so it tests in node.
 
-const MODELS = ["haiku", "sonnet", "opus"];
-const ACCESS_LEVELS = ["chat", "open", "lookup", "full"];
+const { PROVIDERS, PROVIDER_IDS, ACCESS_LEVELS, MODEL_ID, OPEN_TAG_PROMPT, levelFor } = require("./providers.cjs");
+
 const HHMM = /^([01]\d|2[0-3]):[0-5]\d$/;
 const HOTKEY = /^((Command|Cmd|Control|Ctrl|CmdOrCtrl|Alt|Option|Shift|Super)\+)+([A-Z0-9]|F([1-9]|1[0-9]|2[0-4])|Space|Up|Down|Left|Right)$/i;
 const MUSIC_KEYS = ["playPause", "next", "previous", "volumeUp", "volumeDown"];
@@ -29,14 +29,16 @@ function toolArgs(config) {
 }
 
 // Without being told, small models answer "I can't" instead of trying the tool.
-function toolPrompt(config) {
-  const open = "You can open apps, files and links on this Mac with the shell command `open`: `open -a Calculator` for an app, `open https://google.com` for a website, `open ~/Downloads` for a folder. When asked to open something, run it, then say what you opened.";
+// Claude Code may run `open` itself; every other brain asks the duck to with [open: …].
+function toolPrompt(config, provider = "claude") {
+  const level = levelFor(provider, accessLevel(config));
+  const open = provider !== "claude" ? OPEN_TAG_PROMPT : "You can open apps, files and links on this Mac with the shell command `open`: `open -a Calculator` for an app, `open https://google.com` for a website, `open ~/Downloads` for a folder. When asked to open something, run it, then say what you opened.";
   return {
     chat: "",
     open,
     lookup: `${open} You can also search the web and read web pages to answer questions about news, weather, facts or anything current; look it up instead of guessing.`,
     full: "You have full use of this Mac through the shell: open apps and links, run commands and scripts, control apps with AppleScript (osascript), and search the web. For music in any player (YouTube Music in the browser, Spotify, Music), use `media-control`: `media-control get` says what is playing (null means nothing), and `play`, `pause`, `toggle-play-pause`, `next-track`, `previous-track` control it. When asked to do something on the Mac, do it, then say in one line what you did. Ask first before deleting files, sending messages or spending money.",
-  }[accessLevel(config)];
+  }[level];
 }
 
 const bool = (v) => typeof v === "boolean";
@@ -54,7 +56,13 @@ function validateSettings(patch, current) {
     if (!(key in patch)) return;
     if (ok(patch[key])) set(patch[key]); else errors[key] = message;
   };
-  take("model", (v) => MODELS.includes(v), "Pick Haiku, Sonnet or Opus.", (v) => { next.model = v; });
+  // A new provider without a model picks that provider's default, so a Claude alias never reaches Gemini.
+  take("provider", (v) => PROVIDER_IDS.includes(v), "Pick a brain from the list.", (v) => {
+    if (v !== next.provider && !("model" in patch)) next.model = PROVIDERS[v].defaultModel ?? "haiku";
+    next.provider = v;
+  });
+  take("model", (v) => typeof v === "string" && (v === "" || MODEL_ID.test(v.trim())), "Use a model id like haiku, gpt-6-luna or gemini-3.6-flash.", (v) => { next.model = v.trim(); });
+  take("openaiBaseUrl", (v) => typeof v === "string" && (v.trim() === "" || /^https?:\/\/[^\s"]{1,500}$/.test(v.trim())), "Leave empty for OpenAI, or give a URL like http://localhost:11434/v1.", (v) => { next.openaiBaseUrl = v.trim(); });
   take("access", (v) => ACCESS_LEVELS.includes(v), "Pick one of the four levels.", (v) => { next.access = v; delete next.openApps; });
   take("mcp", bool, "On or off.", (v) => { next.mcp = v; });
   take("voice", (v) => typeof v === "string" && VOICE.test(v), "Pick a voice from the list.", (v) => { next.voice = v; });
@@ -76,7 +84,8 @@ function validateSettings(patch, current) {
 // The values the window shows, flattened to the same keys validateSettings takes.
 function settingsView(config) {
   return {
-    model: config.model, access: accessLevel(config), mcp: !!config.mcp,
+    provider: PROVIDER_IDS.includes(config.provider) ? config.provider : "auto", model: config.model ?? "", openaiBaseUrl: config.openaiBaseUrl ?? "",
+    access: accessLevel(config), mcp: !!config.mcp,
     voice: config.voice, rate: config.rate, listen: !!config.listen, hotkey: config.hotkey, typeHotkey: config.typeHotkey,
     display: String(config.display), name: config.name ?? "",
     "pet.greetings": config.pet?.greetings !== false, "pet.wants": config.pet?.wants !== false, "pet.petting": config.pet?.petting !== false,
@@ -93,4 +102,4 @@ function parseVoices(text) {
     .map((m) => ({ name: m[1].trim(), lang: m[2] }));
 }
 
-module.exports = { MODELS, ACCESS_LEVELS, accessLevel, toolArgs, toolPrompt, validateSettings, settingsView, parseVoices };
+module.exports = { ACCESS_LEVELS, accessLevel, toolArgs, toolPrompt, validateSettings, settingsView, parseVoices };
