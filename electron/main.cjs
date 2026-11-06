@@ -1,4 +1,4 @@
-const { app, BrowserWindow, protocol, screen, Tray, Menu, ipcMain, nativeImage, shell, globalShortcut, systemPreferences, dialog, powerSaveBlocker } = require("electron");
+const { app, BrowserWindow, protocol, screen, Tray, Menu, ipcMain, nativeImage, shell, clipboard, globalShortcut, systemPreferences, dialog, powerSaveBlocker } = require("electron");
 const { execFileSync, execFile } = require("node:child_process");
 const { createNudges, NUDGE_DEFAULTS } = require("./nudges.cjs");
 const { spokenCut } = require("./speech.cjs");
@@ -14,7 +14,7 @@ const { accessLevel, toolArgs, toolPrompt, validateSettings, settingsView, parse
 const { createApiBrain, saveKey, readKey, deleteKey } = require("./apibrain.cjs");
 const { PROVIDERS, API_PROVIDERS, CLI_KEYS, resolveProvider, modelFor, levelFor, takeOpenTags, openArgs } = require("./providers.cjs");
 const { createUpdateCheck } = require("./updates.cjs");
-const { tourDue, brainStatus, brainChoices, TRY_PHRASES } = require("./tour.cjs");
+const { tourDue, brainStatus, setupChoices, setupGuide, tourUrls, tourCommands, pickOllamaModel, explainError, TRY_PHRASES, TEST_QUESTION, OLLAMA_URL } = require("./tour.cjs");
 const { createCliBrain, withCliKey } = require("./clibrain.cjs");
 const { attachLogFile } = require("./logfile.cjs");
 const { createBrainProcess } = require("./brainproc.cjs");
@@ -84,10 +84,11 @@ function rememberLines(lines) {
 }
 const VARIANT_SET = Object.fromEntries([...BASE_VARIANTS, ...Object.keys(SKIN_PACK)].map((v) => [v, 1]));
 // A Finder-launched app has a bare PATH, so the usual install folders are tried by hand.
-function resolveBin(name, envVar, extra = []) {
+function resolveBin(name, envVar, extra = [], dirs = []) {
   const candidates = [
     process.env[envVar],
     ...extra,
+    ...dirs.map((d) => path.join(d, name)),
     path.join(os.homedir(), ".local", "bin", name),
     "/opt/homebrew/bin/" + name, "/usr/local/bin/" + name,
     path.join(os.homedir(), ".npm-global", "bin", name),
@@ -96,8 +97,15 @@ function resolveBin(name, envVar, extra = []) {
   ].filter(Boolean);
   return candidates.find((p) => { try { fs.accessSync(p, fs.constants.X_OK); return true; } catch { return false; } }) ?? null;
 }
-const CLAUDE_BIN = resolveBin("claude", "CLAUDE_BIN", [path.join(os.homedir(), ".claude", "local", "claude")]);
-const CLI_BINS = { claude: CLAUDE_BIN, codex: resolveBin("codex", "CODEX_BIN"), "gemini-cli": resolveBin("gemini", "GEMINI_BIN") };
+let CLAUDE_BIN = null;
+const CLI_BINS = {};
+// Found once at start, and again when the welcome tour checks a CLI someone just installed.
+// `dirs` adds the folders of their login shell's PATH (an nvm or custom npm prefix, say).
+function findBins(dirs = []) {
+  CLAUDE_BIN = resolveBin("claude", "CLAUDE_BIN", [path.join(os.homedir(), ".claude", "local", "claude")], dirs);
+  Object.assign(CLI_BINS, { claude: CLAUDE_BIN, codex: resolveBin("codex", "CODEX_BIN", [], dirs), "gemini-cli": resolveBin("gemini", "GEMINI_BIN", [], dirs) });
+}
+findBins();
 function activeProvider() { return resolveProvider(config, { claude: CLAUDE_BIN }); }
 
 const MOVES = `You have a body and these moves: [sit] [stand] [roll] [peck] [quack] [dance] [come] (walk over to the cursor) [hop] (jump onto a window above you) [off] (step off the window you stand on) [skate] (put on roller skates, fast) [walk] (back on legs) [ball] (a beach ball to chase and kick) [noball] [kick] [sleep] [nap] (a short nap) [nap 5s] or [nap 10m] (sleep for exactly that long, then wake up by yourself; use this whenever a length is asked for) [quiet] (quiet mode: no sounds or voice, replies still appear as text) [loud] (sounds back on) [awake] (keep the Mac and its screen awake until told otherwise, what caffeinate does) [awake 120] (for that many minutes) [awake off] (let it sleep again) [color ${Object.keys(VARIANT_SET).join("|")}] [focus N] (a focus block of N minutes: you sit quietly and hold all nudges) [mail] (fetch and deliver the owner's briefing: mail, calendar, tickets) [remind HH:MM text] or [remind +Nm text] (set a reminder; the current date and time are in the context line, so convert 'in 20 minutes' or 'at 3' yourself). Whenever you are asked to do one of them, or it fits the mood, end your reply with that tag, for example: 'Taking a seat. [sit]' or 'Wiggle time! [dance]'. The tag is executed by your body and never spoken; never say you cannot do these.`;
@@ -727,7 +735,7 @@ const updates = app.isPackaged && PUBLISHED ? createUpdateCheck({
 let welcomeWin = null;
 function openWelcome() {
   if (welcomeWin) { welcomeWin.show(); welcomeWin.focus(); return; }
-  const width = 460, height = 470;
+  const width = 460, height = 560;
   const wa = targetDisplay().workArea;
   welcomeWin = new BrowserWindow({
     width, height, x: Math.round(wa.x + (wa.width - width) / 2), y: Math.round(wa.y + (wa.height - height) * 0.3),
@@ -749,29 +757,93 @@ async function tourBrain() {
   return brainStatus({ provider, bins: CLI_BINS, hasKey, baseUrl: config.openaiBaseUrl });
 }
 const TOUR_ACTS = new Set(["dance", "quack", "hop", "come"]);
-ipcMain.handle("tour:load", async () => ({
-  name: config.name,
-  brain: await tourBrain(),
-  choices: brainChoices(CLI_BINS, Object.fromEntries(await Promise.all(Object.keys(API_PROVIDERS).map(async (id) => [id, !!(await readKey(id))])))),
-  phrases: TRY_PHRASES,
-  login: loginItemOn(),
-  typeHotkey: config.typeHotkey,
-  hotkey: config.hotkey,
-  listen: !!config.listen,
+// The folders on the PATH of the owner's login shell, which a Finder-launched app doesn't get.
+let shellDirs = null;
+const loginShellDirs = () => (shellDirs ??= new Promise((resolve) => {
+  execFile(process.env.SHELL || "/bin/zsh", ["-ilc", "printf '<<%s>>' \"$PATH\""], { timeout: 4000 }, (_err, stdout) => {
+    resolve((/<<(.*)>>/.exec(String(stdout ?? ""))?.[1] ?? "").split(":").filter((d) => d.startsWith("/")));
+  });
 }));
-ipcMain.handle("tour:use-brain", async (_e, id) => {
-  if (!PROVIDERS[id] || PROVIDERS[id].kind === "auto") return tourBrain();
-  applySettings({ provider: id });
-  const brain = await tourBrain();
-  if (brain.need === "key") openKeyPrompt(id);
-  return brain;
+async function rescanBins() {
+  const before = { ...CLI_BINS };
+  const dirs = await loginShellDirs();
+  findBins(dirs);
+  for (const [id, bin] of Object.entries(CLI_BINS)) {
+    if (bin === before[id]) continue;
+    if (id === "claude") { brainProc?.stop(); brainProc = null; }
+    else { cliBrains[id]?.stop(); delete cliBrains[id]; }
+  }
+  return dirs;
+}
+const savedKeys = async () => Object.fromEntries(await Promise.all(Object.keys(API_PROVIDERS).map(async (id) => [id, !!(await readKey(id))])));
+async function setupEnv() {
+  const dirs = await loginShellDirs();
+  return { brew: !!resolveBin("brew", "BREW_BIN", [], dirs), npm: !!resolveBin("npm", "NPM_BIN", [], dirs) };
+}
+// Ollama answers on its own port; its list of pulled models says which one to talk to.
+async function ollamaModels() {
+  try {
+    const res = await fetch("http://127.0.0.1:11434/api/tags", { signal: AbortSignal.timeout(3000) });
+    if (!res.ok) return { running: true, models: [] };
+    return { running: true, models: ((await res.json()).models ?? []).map((m) => String(m.name)) };
+  } catch { return { running: false, models: [] }; }
+}
+// Whether the choice someone just set up works now, and if it does, make it the brain.
+async function checkSetup(id) {
+  const guide = setupGuide(String(id), {});
+  // Leaving Ollama: its model name means nothing to the next brain.
+  const offOllama = config.openaiBaseUrl ? { model: "" } : {};
+  if (!guide) return { ok: false, message: "Pick one of the options." };
+  const { kind, provider } = guide.check;
+  if (kind === "cli") {
+    await rescanBins();
+    const label = PROVIDERS[provider].label;
+    if (!CLI_BINS[provider]) return { ok: false, message: `I can't find ${label} yet. Finish installing it, then press Check again.` };
+    applySettings({ provider, ...offOllama });
+  } else if (kind === "ollama") {
+    const { running, models } = await ollamaModels();
+    if (!running) return { ok: false, message: "I can't reach Ollama. Open the Ollama app, then press Check again." };
+    const model = pickOllamaModel(models);
+    if (!model) return { ok: false, message: "Ollama is running but has no model yet. Paste the pull command in Terminal and wait for it to finish." };
+    applySettings({ provider: "openai", openaiBaseUrl: OLLAMA_URL, model });
+  } else {
+    const keys = await savedKeys();
+    const ready = provider ? (keys[provider] ? provider : null) : Object.keys(API_PROVIDERS).find((k) => keys[k]);
+    if (!ready) return { ok: false, message: "No key saved yet. Paste one first." };
+    applySettings({ provider: ready, ...offOllama, ...(ready === "openai" ? { openaiBaseUrl: "" } : {}) });
+  }
+  return { ok: true, brain: await tourBrain() };
+}
+ipcMain.handle("tour:load", async () => {
+  loginShellDirs(); // A login shell takes a couple of seconds; start it before a guide needs it.
+  return {
+    name: config.name,
+    brain: await tourBrain(),
+    choices: setupChoices({ bins: CLI_BINS, keys: await savedKeys() }),
+    phrases: TRY_PHRASES,
+    login: loginItemOn(),
+    typeHotkey: config.typeHotkey,
+    hotkey: config.hotkey,
+    listen: !!config.listen,
+  };
 });
+ipcMain.handle("tour:guide", async (_e, id) => setupGuide(String(id), await setupEnv()));
+ipcMain.handle("tour:check", (_e, id) => checkSetup(id));
+ipcMain.on("tour:key", (_e, provider) => { if (API_PROVIDERS[provider]) openKeyPrompt(provider); });
+ipcMain.on("tour:test", () => send({ type: "ask", value: TEST_QUESTION }));
+ipcMain.handle("tour:copy", (_e, text) => { if (!tourCommands().includes(text)) return false; clipboard.writeText(text); return true; });
+ipcMain.on("tour:open-url", (_e, url) => { if (tourUrls().includes(url)) shell.openExternal(url); });
+ipcMain.on("tour:terminal", () => execFile("open", ["-a", "Terminal"], () => {}));
 ipcMain.on("tour:act", (_e, name) => { if (TOUR_ACTS.has(name)) send({ type: "act", value: name }); });
 ipcMain.on("tour:try", (_e, text) => { if (TRY_PHRASES.some((p) => p.text === text)) send({ type: "ask", value: text }); });
 ipcMain.handle("tour:login", (_e, on) => { setLoginItem(!!on); return loginItemOn(); });
 ipcMain.on("tour:settings", () => openSettings());
 ipcMain.on("tour:done", () => welcomeWin?.close());
-ipcMain.on("pet:tour-event", (_e, name) => welcomeWin?.webContents.send("tour:event", String(name)));
+ipcMain.on("pet:tour-event", (_e, name, detail) => {
+  if (!welcomeWin) return;
+  const help = name === "reply-failed" ? explainError(detail, { provider: activeProvider(), baseUrl: config.openaiBaseUrl }) : undefined;
+  welcomeWin.webContents.send("tour:event", String(name), help);
+});
 ipcMain.handle("settings:preview-voice", (_e, voice, rate) => {
   const { errors } = validateSettings({ voice, rate }, config);
   if (Object.keys(errors).length) return;

@@ -1,5 +1,6 @@
 // The welcome tour. Main sends what it knows (tour:load) and the duck's events (tour:event):
-// "dropped" after a drag, "replied" after an answer, "key-closed" when the key window shuts.
+// "dropped" after a drag, "replied" after an answer, "reply-failed" with what to do about it,
+// and "key-closed" when the key window shuts.
 const stepEl = document.getElementById("step");
 const dotsEl = document.getElementById("dots");
 const countEl = document.getElementById("step-count");
@@ -24,18 +25,89 @@ function h(tag, props = {}, ...children) {
 }
 const keys = (combo) => String(combo ?? "").split("+").map((part, i) => [i ? "+" : "", h("kbd", {}, part)]);
 
-function brainLine(brain) {
-  if (brain.ready) return h("div", { class: "status ok" }, `Answering with ${brain.label}.`);
-  const why = { install: `${brain.label} isn't installed on this Mac.`, key: `${brain.label} needs a key.`, pick: "No brain picked yet." }[brain.need];
-  return h("div", { class: "status" }, `To talk back I need a brain. ${why} Pick one, or skip: moves work without one.`);
+// Step 3 for someone with no brain yet: pick by what they have, follow the guide, check, test.
+// `setup.view` is "choices", "guide" or "test"; `message` is what went wrong, in plain words.
+let setup = { view: "choices" };
+const KEY_NAMES = { anthropic: "Anthropic", openai: "OpenAI", gemini: "Gemini" };
+
+async function runCheck(id) {
+  setup = { ...setup, checking: true, message: null };
+  render();
+  const res = await window.tour.check(id);
+  if (!res.ok) { setup = { ...setup, checking: false, message: res.message }; render(); return; }
+  info.brain = res.brain;
+  setup = { view: "test", id };
+  stepEvents = {};
+  render();
+  window.tour.test();
+}
+async function pick(id) {
+  if (id.startsWith("use:")) { setup = { view: "choices", id, switching: setup.switching }; return runCheck(id); }
+  setup = { view: "guide", id, guide: await window.tour.guide(id), switching: setup.switching };
+  render();
+}
+const run = (fn) => fn();
+const status = (text, ok = false) => h("div", { class: ok ? "status ok" : "status" }, text);
+
+function choicesView() {
+  return [
+    setup.switching && h("button", { class: "link", on: { click: () => { setup = { view: "choices" }; render(); } } }, `← Keep ${info.brain.label}`),
+    h("h1", {}, "Give me a brain"),
+    h("p", {}, "I answer with an AI you have, or a free one on this Mac."),
+    h("div", { class: "choices" }, info.choices.map((choice) => h("button", { class: "choice", disabled: !!setup.checking, on: { click: () => pick(choice.id) } },
+      h("b", {}, choice.title), h("span", { class: "muted" }, choice.note)))),
+    setup.message ? status(setup.message) : h("p", { class: "muted" }, "No rush: moves work without one. Next skips this."),
+  ];
 }
 
-function brainPicker() {
-  return h("div", { class: "choices" }, info.choices.map((choice) => h("button", {
-    class: "choice",
-    on: { click: async () => { info.brain = await window.tour.useBrain(choice.id); render(); } },
-  }, choice.kind === "cli" || choice.hasKey ? `Use ${choice.label}` : `${choice.label}: add a key`,
-  h("span", { class: "muted" }, choice.kind === "cli" ? "installed" : choice.hasKey ? "key saved" : choice.keyUrl))));
+function stepView(step, i, firstCommand) {
+  return h("li", {},
+    h("div", {}, step.text),
+    step.command && h("div", { class: "cmd" },
+      h("code", {}, step.command),
+      h("button", { on: { click: async (e) => { if (await window.tour.copy(step.command)) e.target.textContent = "Copied"; } } }, "Copy")),
+    step.command && i === firstCommand && h("button", { class: "link", on: { click: () => window.tour.openTerminal() } }, "Open Terminal"),
+    step.url && h("button", { on: { click: () => window.tour.openUrl(step.url) } }, `Open ${new URL(step.url).hostname}`),
+    step.keys && h("div", { class: "keys" }, step.keys.map((provider) => h("button", { on: { click: () => window.tour.addKey(provider) } }, `Paste ${step.keys.length > 1 ? `${KEY_NAMES[provider]} ` : ""}key`))));
+}
+
+function guideView() {
+  const { guide } = setup;
+  const firstCommand = guide.steps.findIndex((step) => step.command);
+  return [
+    h("button", { class: "link", on: { click: () => { setup = { view: "choices", switching: setup.switching }; render(); } } }, "← Other options"),
+    h("h1", {}, guide.title),
+    h("ol", { class: "steps" }, guide.steps.map((step, i) => stepView(step, i, firstCommand))),
+    h("p", {}, h("button", { class: "primary", disabled: !!setup.checking, on: { click: () => runCheck(setup.id) } }, setup.checking ? "Checking…" : setup.message ? "Check again" : "Done, check it")),
+    setup.message && status(setup.message),
+  ];
+}
+
+function retest() {
+  if (setup.id) return runCheck(setup.id);
+  setup = { view: "test" };
+  stepEvents = {};
+  render();
+  window.tour.test();
+}
+function readyView() {
+  const failed = stepEvents.failed;
+  const testing = setup.view === "test" && !stepEvents.replied && !failed;
+  const switchBrain = h("button", { class: "link", on: { click: async () => { info = await window.tour.load(); setup = { view: "choices", switching: true }; stepEvents = {}; render(); } } }, "Use a different brain");
+  return [
+    h("div", { class: "art" }, "💬"),
+    h("h1", {}, "Talk to me"),
+    run(() => {
+      if (failed) return [status(failed), h("div", { class: "row" }, h("button", { class: "primary", on: { click: retest } }, "Check again"), switchBrain)];
+      if (testing) return status(`${info.brain.label} is ready. Asking it to say hi…`);
+      return [
+        stepEvents.replied ? status("That's me talking. Answers show in my bubble, and I say them out loud.", true) : status(`Answering with ${info.brain.label}.`, true),
+        h("p", {}, "Click me, type ", h("b", {}, "hi"), " and press Return."),
+        h("p", {}, "From any app, ", keys(info.typeHotkey), " opens the same box."),
+        switchBrain,
+      ];
+    }),
+  ];
 }
 
 const STEPS = [
@@ -61,21 +133,21 @@ const STEPS = [
     ],
   },
   {
+    enter: () => { setup = { view: "choices" }; },
     events: {
-      replied: () => { stepEvents.replied = true; render(); },
-      "key-closed": async () => { info = await window.tour.load(); render(); },
+      replied: () => { stepEvents = { replied: true }; render(); },
+      "reply-failed": (help) => { stepEvents = { failed: help }; render(); },
+      "key-closed": async () => {
+        if (setup.view === "guide" && setup.guide?.check.kind === "api") return runCheck(setup.id);
+        info = await window.tour.load();
+        render();
+      },
     },
-    render: () => [
-      info.brain.ready && h("div", { class: "art" }, "💬"),
-      h("h1", {}, "Talk to me"),
-      info.brain.ready
-        ? [
-          h("p", {}, "Click me, type ", h("b", {}, "hi"), " and press Return."),
-          h("p", {}, "From any app, ", keys(info.typeHotkey), " opens the same box."),
-        ]
-        : [brainLine(info.brain), brainPicker(), h("p", { class: "muted" }, "Keys stay in your macOS Keychain.")],
-      info.brain.ready && (stepEvents.replied ? h("div", { class: "status ok" }, "That's me talking. Answers show in my bubble, and I say them out loud.") : brainLine(info.brain)),
-    ],
+    render: () => run(() => {
+      if (setup.view === "guide") return guideView();
+      if (info.brain.ready && !setup.switching) return readyView();
+      return choicesView();
+    }),
   },
   {
     render: () => [
@@ -132,7 +204,7 @@ function go(delta) {
   nextBtn.focus();
 }
 
-window.tour.onEvent((name) => STEPS[index]?.events?.[name]?.());
+window.tour.onEvent((name, detail) => STEPS[index]?.events?.[name]?.(detail));
 nextBtn.addEventListener("click", () => go(1));
 backBtn.addEventListener("click", () => go(-1));
 skipBtn.addEventListener("click", () => window.tour.done());

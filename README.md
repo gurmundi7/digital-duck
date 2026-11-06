@@ -66,7 +66,7 @@ It also talks back through Claude, Codex or Gemini, keeps your Mac awake when yo
 
 Download the `.dmg` from [Releases](https://github.com/gurmundi7/digital-duck/releases), drag Digital Duck to Applications, and open it. Apple Silicon and Intel builds are both there.
 
-A 🦆 appears in the menu bar and a short welcome tour opens. In five steps it shows what the duck does and has you pick it up, talk to it, and pick a brain if none is ready. Skip it any time. It opens once, and lives in the 🦆 menu under **Welcome tour…** after that.
+A 🦆 appears in the menu bar and a short welcome tour opens. In five steps it shows what the duck does and has you pick it up and talk to it. If you have no AI set up yet, it walks you through one: Claude Code with a Claude plan, Codex with a ChatGPT plan, a free Gemini key, your own API key, or Ollama, which is free and runs on your Mac. It checks the brain works by having it say hi. Skip it any time. It opens once, and lives in the 🦆 menu under **Welcome tour…** after that.
 
 ## Everything it does
 
