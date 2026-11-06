@@ -268,6 +268,7 @@ window.addEventListener("mouseup", (e) => {
     grabbing = false;
     sim.endGrab();
     behaviour.onDropped();
+    pet?.tourEvent("dropped");
     downAt = null;
     hover = overDuck(e.clientX, e.clientY);
     updateMouseGate();
@@ -517,6 +518,7 @@ async function ask(text) {
   const reply = raw.replace(ACTION_TAG, "").replace(/\s{2,}/g, " ").trim() || "quack!";
   bubble.show(reply, { ttlMs: Math.min(30000, 4000 + reply.length * 60) });
   audio.chirp(sim.variant);
+  if (!res?.error && !res?.direct) pet.tourEvent("replied");
   for (const a of actions) runBodyAction(a);
   if (!audio.muted) pet.say(reply);
   else behaviour.setChatting(false);
@@ -556,6 +558,8 @@ function handleCommand(cmd) {
     case "skate": behaviour.setLoco("rollers"); break;
     case "walk": behaviour.setLoco("legs"); break;
     case "kick": behaviour.kickNow(); break;
+    case "act": runBodyAction(cmd.value); break;
+    case "ask": ask(cmd.value); break;
     case "quiet": pet.setQuiet(true); break;
     case "loud": pet.setQuiet(false); break;
     case "presence": onPresence(cmd); break;

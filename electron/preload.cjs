@@ -20,6 +20,7 @@ contextBridge.exposeInMainWorld("pet", {
   transcribe: (wav) => ipcRenderer.invoke("pet:transcribe", wav),
   quit: () => ipcRenderer.send("pet:quit"),
   log: (msg) => ipcRenderer.send("pet:log", msg),
+  tourEvent: (name) => ipcRenderer.send("pet:tour-event", name),
   onCommand: (cb) => ipcRenderer.on("pet:command", (_e, cmd) => cb(cmd)),
   onSpeaking: (cb) => ipcRenderer.on("pet:speaking", (_e, v) => cb(v)),
   onWindows: (cb) => ipcRenderer.on("pet:windows", (_e, w) => cb(w)),
