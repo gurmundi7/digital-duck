@@ -38,6 +38,7 @@ const DEFAULT_CONFIG = {
   nudges: NUDGE_DEFAULTS,
   variant: "classic",
   mcp: false,
+  updateCheck: true,
   // Extra MCP servers for the brain when mcp is on, same shape as Claude's
   // mcpServers map ({ name: { command, args } } or { name: { url } }).
   mcpServers: {},
