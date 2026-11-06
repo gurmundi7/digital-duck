@@ -8,7 +8,7 @@ import { createRecorder } from "./recorder.js";
 import { applySkin, variantNames, variantAliases } from "./skins.js";
 import { createWants } from "./wants.js";
 import { line } from "./lines.js";
-import { napMs, napText, napFromRequest } from "./tags.js";
+import { napMs, napText, napFromRequest, actionTagPattern } from "./tags.js";
 import { createNotes } from "./notes.js";
 import { createNapper } from "./nap.js";
 
@@ -419,14 +419,14 @@ function applyConfig(cfg) {
 function openChat() {
   behaviour.setChatting(true);
   bubble.prompt();
-  pet?.focus();
+  pet?.focusWindow();
 }
 function closeChat() {
   bubble.hide();
   behaviour.setChatting(false);
   updateMouseGate();
 }
-const ACTION_TAG = new RegExp(String.raw`\[(sit|stand|roll|peck|quack|dance|come|sleep|nap(?:\s+\d+\s*[smh]?)?|hop|off|skate|walk|ball|noball|kick|quiet|loud|mail|focus\s+\d+|remind\s+[^\]]+|color\s+(${variantNames().join("|")}))\]`, "gi");
+const ACTION_TAG = actionTagPattern(variantNames());
 async function setReminder(spec) {
   const r = await pet.remind(spec);
   if (r) speak(`Noted: ${r.label}, ${r.text}.`, { ttlMs: 7000 });

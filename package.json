@@ -17,16 +17,18 @@
     "start:log": "mkdir -p state && npm run build && ./node_modules/.bin/electron . 2>&1 | tee -a state/duck.log",
     "dev": "vite",
     "electron": "electron .",
-    "test": "node --test \"test/**/*.test.cjs\"",
+    "test": "node --test test/*.test.cjs",
     "helpers": "scripts/build-helpers.sh",
     "dist": "scripts/check-public.sh && npm run build && npm run helpers && electron-builder --mac --publish never",
     "release": "scripts/check-public.sh && npm run build && npm run helpers && electron-builder --mac --publish always",
-    "postinstall": "scripts/patch-electron-plist.sh"
+    "postinstall": "scripts/patch-electron-plist.sh",
+    "lint": "eslint ."
   },
   "devDependencies": {
     "@mujoco/mujoco": "3.11.0",
     "electron": "^38.8.6",
     "electron-builder": "26.17.0",
+    "eslint": "10.14.0",
     "onnxruntime-web": "1.27.0",
     "three": "0.164.1",
     "vite": "6.4.5"

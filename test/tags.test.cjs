@@ -39,3 +39,18 @@ test("a timed nap says how long it is, in the unit the owner used", async () => 
   assert.strictEqual(napText(7200000), "2 hours");
   assert.strictEqual(napText(90 * 60000), "90 minutes");
 });
+
+test("every tag the brain is told about is one the body acts on and strips from the reply", async () => {
+  const { actionTagPattern } = await tags();
+  const { movesPrompt } = require("../electron/settings.cjs");
+  const variants = ["classic", "charcoal"];
+  const told = [...movesPrompt(variants).matchAll(/\[[^\]]+\]/g)].map((m) => m[0])
+    .flatMap((tag) => (tag.startsWith("[color ") ? variants.map((v) => `[color ${v}]`) : [tag]))
+    .map((tag) => tag.replace(/\bN\b/, "25").replace("+Nm", "+20m").replace("HH:MM", "15:00"));
+  assert.ok(told.includes("[awake 120]"));
+  for (const tag of told) {
+    const reply = `On it. ${tag}`;
+    assert.strictEqual([...reply.matchAll(actionTagPattern(variants))].length, 1, `${tag} is not acted on`);
+    assert.strictEqual(reply.replace(actionTagPattern(variants), "").trim(), "On it.", `${tag} stays in the reply`);
+  }
+});

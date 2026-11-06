@@ -2,7 +2,7 @@ const { contextBridge, ipcRenderer } = require("electron");
 
 contextBridge.exposeInMainWorld("pet", {
   setIgnoreMouse: (v) => ipcRenderer.send("pet:set-ignore-mouse", v),
-  focus: () => ipcRenderer.send("pet:focus"),
+  focusWindow: () => ipcRenderer.send("pet:focus-window"),
   contextMenu: () => ipcRenderer.send("pet:context-menu"),
   ask: (text, context) => ipcRenderer.invoke("pet:ask", text, context),
   remind: (spec) => ipcRenderer.invoke("pet:remind", spec),
