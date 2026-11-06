@@ -26,5 +26,5 @@ export function napFromRequest(request) {
 
 // The body tags a reply can carry, as listed to the brain by movesPrompt (electron/settings.cjs).
 export function actionTagPattern(variants) {
-  return new RegExp(String.raw`\[(sit|stand|roll|peck|quack|dance|come|sleep|nap(?:\s+\d+\s*[smh]?)?|hop|off|skate|walk|ball|noball|kick|quiet|loud|mail|awake(?:\s+(?:\d+|off))?|focus\s+\d+|remind\s+[^\]]+|color\s+(${variants.join("|")}))\]`, "gi");
+  return new RegExp(String.raw`\[(sit|stand|roll|peck|quack|dance|come|sleep|nap(?:\s+\d+\s*[smh]?)?|hop|off|skate|walk|ball|noball|kick|quiet|loud|awake(?:\s+(?:\d+|off))?|focus\s+\d+|remind\s+[^\]]+|color\s+(${variants.join("|")}))\]`, "gi");
 }

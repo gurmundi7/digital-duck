@@ -3,7 +3,6 @@
 
 const { PROVIDERS, PROVIDER_IDS, ACCESS_LEVELS, MODEL_ID, OPEN_TAG_PROMPT, levelFor } = require("./providers.cjs");
 
-const HHMM = /^([01]\d|2[0-3]):[0-5]\d$/;
 const HOTKEY = /^((Command|Cmd|Control|Ctrl|CmdOrCtrl|Alt|Option|Shift|Super)\+)+([A-Z0-9]|F([1-9]|1[0-9]|2[0-4])|Space|Up|Down|Left|Right)$/i;
 const MUSIC_KEYS = ["playPause", "next", "previous", "volumeUp", "volumeDown"];
 const VOICE = /^[\p{L}\p{N} .()'-]{1,64}$/u;
@@ -43,7 +42,7 @@ function toolPrompt(config, provider = "claude") {
 
 // Every tag named here must match the renderer's actionTagPattern (renderer/src/tags.js), or the
 // brain's reply shows the raw tag and the body never acts on it. test/tags.test.cjs checks both.
-const movesPrompt = (variants) => `You have a body and these moves: [sit] [stand] [roll] [peck] [quack] [dance] [come] (walk over to the cursor) [hop] (jump onto a window above you) [off] (step off the window you stand on) [skate] (put on roller skates, fast) [walk] (back on legs) [ball] (a beach ball to chase and kick) [noball] [kick] [sleep] [nap] (a short nap) [nap 5s] or [nap 10m] (sleep for exactly that long, then wake up by yourself; use this whenever a length is asked for) [quiet] (quiet mode: no sounds or voice, replies still appear as text) [loud] (sounds back on) [awake] (keep the Mac and its screen awake until told otherwise, what caffeinate does) [awake 120] (for that many minutes) [awake off] (let it sleep again) [color ${variants.join("|")}] [focus N] (a focus block of N minutes: you sit quietly and hold all nudges) [mail] (fetch and deliver the owner's briefing: mail, calendar, tickets) [remind HH:MM text] or [remind +Nm text] (set a reminder; the current date and time are in the context line, so convert 'in 20 minutes' or 'at 3' yourself). Whenever you are asked to do one of them, or it fits the mood, end your reply with that tag, for example: 'Taking a seat. [sit]' or 'Wiggle time! [dance]'. The tag is executed by your body and never spoken; never say you cannot do these.`;
+const movesPrompt = (variants) => `You have a body and these moves: [sit] [stand] [roll] [peck] [quack] [dance] [come] (walk over to the cursor) [hop] (jump onto a window above you) [off] (step off the window you stand on) [skate] (put on roller skates, fast) [walk] (back on legs) [ball] (a beach ball to chase and kick) [noball] [kick] [sleep] [nap] (a short nap) [nap 5s] or [nap 10m] (sleep for exactly that long, then wake up by yourself; use this whenever a length is asked for) [quiet] (quiet mode: no sounds or voice, replies still appear as text) [loud] (sounds back on) [awake] (keep the Mac and its screen awake until told otherwise, what caffeinate does) [awake 120] (for that many minutes) [awake off] (let it sleep again) [color ${variants.join("|")}] [focus N] (a focus block of N minutes: you sit quietly and hold all nudges) [remind HH:MM text] or [remind +Nm text] (set a reminder; the current date and time are in the context line, so convert 'in 20 minutes' or 'at 3' yourself). Whenever you are asked to do one of them, or it fits the mood, end your reply with that tag, for example: 'Taking a seat. [sit]' or 'Wiggle time! [dance]'. The tag is executed by your body and never spoken; never say you cannot do these.`;
 
 const bool = (v) => typeof v === "boolean";
 
@@ -78,11 +77,9 @@ function validateSettings(patch, current) {
   take("display", (v) => v === "primary" || v === "cursor" || (typeof v === "string" && /^\d+$/.test(v)) || Number.isInteger(v), "Pick a display.", (v) => { next.display = v; });
   take("name", (v) => typeof v === "string" && v.trim().length >= 1 && v.trim().length <= 40, "A name of 1 to 40 characters.", (v) => { next.name = v.trim(); });
   for (const k of ["greetings", "wants", "petting"]) take(`pet.${k}`, bool, "On or off.", (v) => { next.pet[k] = v; });
-  for (const k of ["reminders", "briefing", "prWatch", "endOfDay"]) take(`work.${k}`, bool, "On or off.", (v) => { next.work[k] = v; });
-  for (const k of ["briefingTime", "endOfDayTime"]) take(`work.${k}`, (v) => typeof v === "string" && HHMM.test(v), "Use 24-hour time like 09:15.", (v) => { next.work[k] = v; });
+  take("work.reminders", bool, "On or off.", (v) => { next.work.reminders = v; });
   for (const k of MUSIC_KEYS) take(`musicKeys.${k}`, (v) => v === "" || (typeof v === "string" && HOTKEY.test(v)), "Use a shortcut like Control+Alt+Space, or leave it empty.", (v) => { next.musicKeys[k] = v; });
   for (const k of ["enabled", "calendar"]) take(`nudges.${k}`, bool, "On or off.", (v) => { next.nudges[k] = v; });
-  take("nudges.notificationsFile", (v) => typeof v === "string" && v.length <= 1024 && !/[\0\n]/.test(v), "Pick a file.", (v) => { next.nudges.notificationsFile = v.trim(); });
   return { config: next, errors };
 }
 
@@ -94,10 +91,9 @@ function settingsView(config) {
     voice: config.voice, rate: config.rate, listen: !!config.listen, hotkey: config.hotkey, typeHotkey: config.typeHotkey,
     display: String(config.display), name: config.name ?? "",
     "pet.greetings": config.pet?.greetings !== false, "pet.wants": config.pet?.wants !== false, "pet.petting": config.pet?.petting !== false,
-    "work.reminders": config.work?.reminders !== false, "work.briefing": !!config.work?.briefing, "work.prWatch": !!config.work?.prWatch, "work.endOfDay": !!config.work?.endOfDay,
-    "work.briefingTime": config.work?.briefingTime ?? "09:15", "work.endOfDayTime": config.work?.endOfDayTime ?? "17:45",
+    "work.reminders": config.work?.reminders !== false,
     ...Object.fromEntries(MUSIC_KEYS.map((k) => [`musicKeys.${k}`, config.musicKeys?.[k] ?? ""])),
-    "nudges.enabled": !!config.nudges?.enabled, "nudges.calendar": !!config.nudges?.calendar, "nudges.notificationsFile": config.nudges?.notificationsFile ?? "",
+    "nudges.enabled": !!config.nudges?.enabled, "nudges.calendar": !!config.nudges?.calendar,
   };
 }
 

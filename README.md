@@ -126,9 +126,7 @@ Each of these is a switch in Settings:
 
 - **Voice input.** Press `Alt+D` and talk. Needs `brew install whisper.cpp` and a speech model in `models/` inside the config folder (`ggml-base.en.bin` from [whisper.cpp](https://huggingface.co/ggerganov/whisper.cpp)). Transcribed on your Mac.
 - **Meeting reminders.** Reads your calendar and walks over a few minutes before a meeting.
-- **Nudges.** Meeting reminders, stretch breaks, and lines another tool appends to a JSONL file (pick the file in Settings; one `{"message", "source"}` object per line).
-- **Pull request watch.** Uses your `gh` CLI to tell you when checks go red or green, or a review lands.
-- **Morning briefing and end-of-day recap.**
+- **Nudges.** Meeting reminders and stretch breaks.
 - **Connectors and MCP servers.** Lets Claude Code use whatever your Claude account has linked (Calendar, Gmail, Slack, Jira and so on), and any CLI brain use the servers under `mcpServers` in the config, so the duck can answer from them. Needs a CLI brain.
 
 Everything is saved to `~/Library/Application Support/Digital Duck/config.json`. **Edit raw config…** at the bottom of Settings opens it.
@@ -143,14 +141,13 @@ What it reads, all on your Mac:
 - What is playing, so it can dance. With `media-control` installed: the title, artist and play state of whatever the Mac shows as Now Playing. Without it: whether Music or Spotify is playing, and macOS asks first.
 - Whether any app is using a microphone, to know you are on a call. Only in use or not, never the sound, so macOS does not ask.
 - Your calendar, only with meeting reminders on. macOS asks first.
-- Your open pull requests through `gh`, only with pull request watch on.
 - The microphone, only with voice input on, only while you hold the talk key. Audio is transcribed locally and not kept.
 
 What it sends:
 
 - **Chat** goes to the company behind the brain you picked (Anthropic, OpenAI or Google), or to the OpenAI-compatible server you set, through its CLI or your API key: what you type or say, a short context line (date, time, how the duck feels, whether you are on a call), its character description, and its notebook of things you asked it to remember. Claude Code and the APIs get nothing else. Codex CLI and Gemini CLI run in read-only modes that still let them read files on your Mac, so what they read while answering can go too.
 - **Look things up and Full access** let it search the web through that brain, and with Full access, read anything on your Mac it decides it needs to answer you.
-- **Connectors**, only with that switch on: the CLI brain can read whatever your linked connectors can reach, and the morning briefing asks it about your mail and meetings.
+- **Connectors**, only with that switch on: the CLI brain can read whatever your linked connectors can reach.
 - **Update check**: once a day, a request to `api.github.com` for the latest release of this repository. No account or ID. Turn it off in Settings → Pet.
 
 No analytics, no telemetry, no accounts. Its notebook, reminders and chat history stay in the config folder. So does `app.log`, a log of what the app did, kept under about 4 MB. It can include reminder and nudge text, song titles and app names, and never leaves your Mac.

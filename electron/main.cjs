@@ -1,4 +1,4 @@
-const { app, BrowserWindow, protocol, screen, Tray, Menu, ipcMain, nativeImage, shell, clipboard, globalShortcut, systemPreferences, dialog, powerSaveBlocker } = require("electron");
+const { app, BrowserWindow, protocol, screen, Tray, Menu, ipcMain, nativeImage, shell, clipboard, globalShortcut, systemPreferences, powerSaveBlocker } = require("electron");
 const { execFileSync, execFile } = require("node:child_process");
 const { createNudges, NUDGE_DEFAULTS } = require("./nudges.cjs");
 const { spokenCut } = require("./speech.cjs");
@@ -7,8 +7,7 @@ const { createAwake } = require("./awake.cjs");
 const { musicFromRequest, createMusic } = require("./music.cjs");
 const { createReminders, parseReminder, parseWhen, whenLabel } = require("./reminders.cjs");
 const { createPresence } = require("./presence.cjs");
-const { createPrWatch } = require("./prwatch.cjs");
-const { createWorkday } = require("./workday.cjs");
+const { createFocus } = require("./focus.cjs");
 const { APP_ID, APP_NAME, DEFAULT_CONFIG, BASE_VARIANTS, loadSkinPack } = require("./config.cjs");
 const { accessLevel, toolArgs, toolPrompt, movesPrompt, validateSettings, settingsView, parseVoices } = require("./settings.cjs");
 const { createApiBrain, saveKey, readKey, deleteKey } = require("./apibrain.cjs");
@@ -243,10 +242,10 @@ function buildMenu() {
       { type: "separator" },
       { label: "Let it sleep", enabled: awake.active(), click: () => awake.set(0) },
     ] },
-    { label: workday?.focusing() ? `Focus: ${workday.focusRemainingMin()} min left` : "Focus", submenu: [
-      ...[25, 45, 60, 90].map((m) => ({ label: `${m} minutes`, click: () => workday?.setFocus(m) })),
+    { label: focusBlock.focusing() ? `Focus: ${focusBlock.remainingMin()} min left` : "Focus", submenu: [
+      ...[25, 45, 60, 90].map((m) => ({ label: `${m} minutes`, click: () => focusBlock.setFocus(m) })),
       { type: "separator" },
-      { label: "End focus now", enabled: !!workday?.focusing(), click: () => workday?.setFocus(0) },
+      { label: "End focus now", enabled: focusBlock.focusing(), click: () => focusBlock.setFocus(0) },
     ] },
     { label: reminders?.list().length ? `Reminders (${reminders.list().length})` : "Reminders", submenu: [
       ...(reminders?.list().map((r) => ({ label: `${whenLabel(r.at)}: ${r.text}`, submenu: [{ label: "Cancel this reminder", click: () => reminders.remove(r.id) }] })) ?? []),
@@ -254,7 +253,6 @@ function buildMenu() {
       { label: "Set one by chat: \"remind me at 3 to…\"", enabled: false },
       { label: "Clear all", enabled: !!reminders?.list().length, click: () => reminders?.clear() },
     ] },
-    { label: "Deliver my briefing now", click: () => workday?.briefing({ force: true }) },
     { label: "Settings…", accelerator: "Command+,", click: () => openSettings() },
     { label: "Welcome tour…", click: () => openWelcome() },
     { type: "separator" },
@@ -509,8 +507,9 @@ function updateMood() {
 setInterval(pollMusic, 15000);
 setInterval(updateMood, 3000);
 
-let nudges = null, workday = null, reminders = null, presence = null, prwatch = null;
+let nudges = null, reminders = null, presence = null;
 const pushNudge = (kind, text, opts) => nudges?.push(kind, text, opts);
+const focusBlock = createFocus({ send, push: pushNudge });
 const music = createMusic({ log: (m) => console.info(m) });
 // Keep the Mac awake (caffeinate without caffeinate): menu, chat and voice.
 const awake = createAwake({
@@ -520,15 +519,13 @@ const awake = createAwake({
     if (c.reason === "timer") pushNudge("awake", "Awake block done, the Mac can sleep again.", { urgent: true });
   },
 });
-function startWorkday(agendaBin) {
+function startWorkday() {
   reminders = createReminders({
     file: REMINDERS_PATH,
     log: (m) => console.log(m),
     onDue: (r) => pushNudge("reminder", `Reminder: ${r.text}.`, { urgent: true }),
   });
   if (config.work.reminders !== false) reminders.start();
-  prwatch = createPrWatch({ log: (m) => console.log(m), onEvent: (e) => pushNudge("pr", e.text, { url: e.url }) });
-  if (config.work.prWatch !== false) prwatch.start();
   presence = createPresence({
     log: (m) => console.log(m),
     onEvent: (e) => {
@@ -537,11 +534,6 @@ function startWorkday(agendaBin) {
     },
   });
   presence.start();
-  workday = createWorkday({
-    config, stateDir: STATE_DIR, agendaBin, askBrain, push: pushNudge, prwatch, reminders, presence, send,
-    log: (m) => console.log(m),
-  });
-  workday.start();
 }
 // A reminder from a brain tag ("15:00 call Sam", "+20m stretch") or the owner's own words.
 function setReminderFromSpec(spec) {
@@ -565,12 +557,12 @@ function startNudges() {
       settings: config.nudges,
       agendaBin: ok ? AGENDA_BIN : null,
       inCall,
-      held: () => !!workday?.focusing(),
+      held: () => focusBlock.focusing(),
       log: (m) => console.log(m),
-      onNudge: (n) => { workday?.record(n.kind, n.text); send({ type: "nudge", ...n }); },
+      onNudge: (n) => send({ type: "nudge", ...n }),
     });
     nudges.start();
-    startWorkday(ok ? AGENDA_BIN : null);
+    startWorkday();
   });
 }
 let frontOwner = null;
@@ -686,7 +678,7 @@ function voices() {
 function applySettings(patch) {
   const { config: next, errors } = validateSettings(patch, config);
   const before = { ...config, work: { ...config.work }, nudges: { ...config.nudges } };
-  // In place: nudges, workday and the renderer hold these objects.
+  // In place: nudges and the renderer hold these objects.
   Object.assign(config.pet, next.pet);
   Object.assign(config.work, next.work);
   Object.assign(config.nudges, next.nudges);
@@ -701,10 +693,8 @@ function applySettings(patch) {
   if (JSON.stringify(musicKeysBefore) !== JSON.stringify(config.musicKeys)) { for (const key of Object.values(musicKeysBefore)) if (key) globalShortcut.unregister(key); registerMusicKeys(); }
   if (before.nudges.enabled !== config.nudges.enabled) nudges?.setEnabled(config.nudges.enabled);
   if (before.nudges.calendar !== config.nudges.calendar) nudges?.setCalendar(config.nudges.calendar);
-  if (before.nudges.notificationsFile !== config.nudges.notificationsFile) nudges?.setNotificationsFile(config.nudges.notificationsFile);
   if (before.work.reminders !== config.work.reminders) { if (config.work.reminders) reminders?.start(); else reminders?.stop(); }
   if (before.updateCheck !== config.updateCheck) { if (config.updateCheck) updates?.start(); else updates?.stop(); }
-  if (before.work.prWatch !== config.work.prWatch) { if (config.work.prWatch) prwatch?.start(); else prwatch?.stop(); }
   if (String(before.display) !== String(config.display)) placeWindow({ reload: true });
   if (before.name !== config.name) send({ type: "config", name: config.name, variant });
   send({ type: "settings", pet: config.pet, work: config.work });
@@ -848,10 +838,6 @@ ipcMain.handle("settings:preview-voice", (_e, voice, rate) => {
   if (Object.keys(errors).length) return;
   spawn("say", ["-v", voice, "-r", String(rate), `Hi ${config.name}, this is how I sound. Quack!`]);
 });
-ipcMain.handle("settings:pick-file", async () => {
-  const r = await dialog.showOpenDialog(settingsWin, { title: "Nudges file", properties: ["openFile", "promptToCreate", "createDirectory"] });
-  return r.canceled ? null : r.filePaths[0];
-});
 ipcMain.handle("settings:login", (_e, on) => setLoginItem(!!on));
 ipcMain.on("settings:key", (_e, provider) => openKeyPrompt(provider));
 ipcMain.on("settings:raw", () => spawn("open", ["-t", CONFIG_PATH]));
@@ -945,8 +931,7 @@ ipcMain.handle("pet:announce", async (_e, text, short) => {
 });
 ipcMain.handle("pet:remind", (_e, spec) => reminders ? setReminderFromSpec(String(spec ?? "")) : null);
 ipcMain.handle("pet:reminders", () => reminders?.list().map((r) => ({ ...r, label: whenLabel(r.at) })) ?? []);
-ipcMain.on("pet:focus", (_e, minutes) => workday?.setFocus(Math.max(0, Math.min(180, Number(minutes) || 0))));
-ipcMain.on("pet:mail", (_e, context) => workday?.briefing({ force: true, context: String(context ?? "") }));
+ipcMain.on("pet:focus", (_e, minutes) => focusBlock.setFocus(Math.max(0, Math.min(180, Number(minutes) || 0))));
 ipcMain.on("pet:wants", (_e, wants) => { try { fs.writeFileSync(WANTS_PATH, JSON.stringify(wants)); } catch { /* fine */ } });
 function readWants() { try { return JSON.parse(fs.readFileSync(WANTS_PATH, "utf8")); } catch { return null; } }
 
@@ -986,7 +971,7 @@ app.whenReady().then(() => {
 });
 
 app.on("window-all-closed", () => app.quit());
-app.on("before-quit", () => { app.isQuitting = true; brainProc?.stop(); for (const b of Object.values(cliBrains)) b.stop(); awake.stop("quit"); stopSaying(); globalShortcut.unregisterAll(); winlistChild?.kill(); micwatchChild?.kill(); nudges?.stop(); workday?.stop(); reminders?.stop(); prwatch?.stop(); presence?.stop(); });
+app.on("before-quit", () => { app.isQuitting = true; brainProc?.stop(); for (const b of Object.values(cliBrains)) b.stop(); awake.stop("quit"); stopSaying(); globalShortcut.unregisterAll(); winlistChild?.kill(); micwatchChild?.kill(); nudges?.stop(); focusBlock.stop(); reminders?.stop(); presence?.stop(); });
 
 // Debug: `kill -USR2 <pid>` writes snap.png to the config folder and logs the duck's state.
 process.on("SIGUSR2", async () => {

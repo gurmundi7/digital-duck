@@ -1,8 +1,5 @@
-// Things the duck brings up on its own: meetings about to start, lines another
-// tool appends to a JSONL file, and a stretch reminder after a long stretch of
-// activity. Quiet hours and video calls hold them back.
-const fs = require("node:fs");
-const os = require("node:os");
+// Things the duck brings up on its own: meetings about to start and a stretch
+// reminder after a long stretch of activity. Quiet hours and video calls hold them back.
 const { execFile } = require("node:child_process");
 
 const DEFAULTS = {
@@ -10,25 +7,19 @@ const DEFAULTS = {
   calendar: false,
   leadMin: 5,
   breakEveryMin: 55,
-  // A JSONL file to watch, one { "message", "source" } object per line; empty is off.
-  notificationsFile: "",
   quietStart: "19:00",
   quietEnd: "08:30",
 };
 
 function createNudges({ settings, agendaBin, onNudge, inCall, held = () => false, log = () => {} }) {
   const cfg = { ...DEFAULTS, ...(settings ?? {}) };
-  const expand = (p) => (p ? p.replace(/^~(?=\/)/, os.homedir()) : "");
-  let NOTIFICATIONS = expand(cfg.notificationsFile);
   const announced = new Map(); // calendar event id -> when
   const pending = [];
-  let notifOffset = sizeOf(NOTIFICATIONS);
   let activeSince = null;
   let lastBreakAt = 0;
   let lastAgendaAt = 0;
   let timer = null;
 
-  function sizeOf(p) { try { return fs.statSync(p).size; } catch { return 0; } }
   function hhmm(s) { const [h, m] = s.split(":").map(Number); return h * 60 + (m || 0); }
   function quiet() {
     const now = new Date(); const t = now.getHours() * 60 + now.getMinutes();
@@ -70,27 +61,6 @@ function createNudges({ settings, agendaBin, onNudge, inCall, held = () => false
     });
   }
 
-  function checkNotifications() {
-    if (!NOTIFICATIONS) return;
-    const size = sizeOf(NOTIFICATIONS);
-    if (size < notifOffset) notifOffset = 0; // rotated
-    if (size === notifOffset) return;
-    const fd = fs.openSync(NOTIFICATIONS, "r");
-    const buf = Buffer.alloc(size - notifOffset);
-    fs.readSync(fd, buf, 0, buf.length, notifOffset);
-    fs.closeSync(fd);
-    notifOffset = size;
-    for (const line of buf.toString("utf8").split("\n")) {
-      if (!line.trim()) continue;
-      let row;
-      try { row = JSON.parse(line); } catch { continue; }
-      const text = String(row.message ?? "")
-        .replace(/[*`_>]/g, "").replace(/<(https?:[^|>]+)\|([^>]+)>/g, "$2").replace(/https?:\/\/\S+/g, "a link")
-        .replace(/\s+/g, " ").trim().slice(0, 220);
-      if (text) emit("ticket", `From the ${row.source ?? "watcher"}: ${text}`);
-    }
-  }
-
   function checkBreak(now) {
     if (!cfg.breakEveryMin) return;
     execFile("ioreg", ["-c", "IOHIDSystem", "-d", "4"], (err, stdout) => {
@@ -112,8 +82,7 @@ function createNudges({ settings, agendaBin, onNudge, inCall, held = () => false
   let ticks = 0;
   function tick() {
     const now = Date.now();
-    if (ticks++ % 20 === 0) log(`[nudge] tick enabled=${cfg.enabled} quiet=${quiet()} call=${inCall()} notif=${sizeOf(NOTIFICATIONS)}/${notifOffset} pending=${pending.length}`);
-    try { checkNotifications(); } catch (e) { log(`[nudge] notifications: ${e.message}`); }
+    if (ticks++ % 20 === 0) log(`[nudge] tick enabled=${cfg.enabled} quiet=${quiet()} call=${inCall()} pending=${pending.length}`);
     checkCalendar(now);
     checkBreak(now);
     flushPending();
@@ -124,8 +93,6 @@ function createNudges({ settings, agendaBin, onNudge, inCall, held = () => false
     stop() { clearInterval(timer); timer = null; },
     setEnabled(v) { cfg.enabled = !!v; },
     setCalendar(v) { cfg.calendar = !!v; },
-    // Starts at the end of the new file: only lines appended from now on are nudges.
-    setNotificationsFile(p) { cfg.notificationsFile = p; NOTIFICATIONS = expand(p); notifOffset = sizeOf(NOTIFICATIONS); },
     get enabled() { return cfg.enabled; },
     push: emit,
     flush() { flushPending(); },
