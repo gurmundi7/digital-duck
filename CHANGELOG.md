@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.3.0
+
+- A short welcome tour opens on first launch: what the duck does, pick it up, talk to it, things to try, and where everything lives. It picks or sets up a brain if none is ready. Skip it any time; it stays in the 🦆 menu as Welcome tour.
+- Chat through more brains: Codex CLI, Gemini CLI, the OpenAI API (or any OpenAI-compatible server such as Ollama or LM Studio) and the Gemini API, as well as Claude Code and the Anthropic API. Pick one in Settings → Brain → Who answers.
+- API keys for Anthropic, OpenAI and Gemini are kept in the macOS Keychain. Codex and Gemini CLI use the saved key only when they have no login of their own.
+
 ## 0.2.1
 
 - The duck stays on the whole width of a window. Before, on a wide window it fell through the top edge when it walked more than a short way from the middle.
