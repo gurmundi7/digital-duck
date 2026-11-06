@@ -41,6 +41,10 @@ function toolPrompt(config, provider = "claude") {
   }[level];
 }
 
+// Every tag named here must match the renderer's actionTagPattern (renderer/src/tags.js), or the
+// brain's reply shows the raw tag and the body never acts on it. test/tags.test.cjs checks both.
+const movesPrompt = (variants) => `You have a body and these moves: [sit] [stand] [roll] [peck] [quack] [dance] [come] (walk over to the cursor) [hop] (jump onto a window above you) [off] (step off the window you stand on) [skate] (put on roller skates, fast) [walk] (back on legs) [ball] (a beach ball to chase and kick) [noball] [kick] [sleep] [nap] (a short nap) [nap 5s] or [nap 10m] (sleep for exactly that long, then wake up by yourself; use this whenever a length is asked for) [quiet] (quiet mode: no sounds or voice, replies still appear as text) [loud] (sounds back on) [awake] (keep the Mac and its screen awake until told otherwise, what caffeinate does) [awake 120] (for that many minutes) [awake off] (let it sleep again) [color ${variants.join("|")}] [focus N] (a focus block of N minutes: you sit quietly and hold all nudges) [mail] (fetch and deliver the owner's briefing: mail, calendar, tickets) [remind HH:MM text] or [remind +Nm text] (set a reminder; the current date and time are in the context line, so convert 'in 20 minutes' or 'at 3' yourself). Whenever you are asked to do one of them, or it fits the mood, end your reply with that tag, for example: 'Taking a seat. [sit]' or 'Wiggle time! [dance]'. The tag is executed by your body and never spoken; never say you cannot do these.`;
+
 const bool = (v) => typeof v === "boolean";
 
 // Checks a form submission against the current config. Valid fields land in the
@@ -103,4 +107,4 @@ function parseVoices(text) {
     .map((m) => ({ name: m[1].trim(), lang: m[2] }));
 }
 
-module.exports = { ACCESS_LEVELS, accessLevel, toolArgs, toolPrompt, validateSettings, settingsView, parseVoices };
+module.exports = { ACCESS_LEVELS, accessLevel, toolArgs, toolPrompt, movesPrompt, validateSettings, settingsView, parseVoices };

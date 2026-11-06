@@ -10,7 +10,7 @@ const { createPresence } = require("./presence.cjs");
 const { createPrWatch } = require("./prwatch.cjs");
 const { createWorkday } = require("./workday.cjs");
 const { APP_ID, APP_NAME, DEFAULT_CONFIG, BASE_VARIANTS, loadSkinPack } = require("./config.cjs");
-const { accessLevel, toolArgs, toolPrompt, validateSettings, settingsView, parseVoices } = require("./settings.cjs");
+const { accessLevel, toolArgs, toolPrompt, movesPrompt, validateSettings, settingsView, parseVoices } = require("./settings.cjs");
 const { createApiBrain, saveKey, readKey, deleteKey } = require("./apibrain.cjs");
 const { PROVIDERS, API_PROVIDERS, CLI_KEYS, resolveProvider, modelFor, levelFor, takeOpenTags, openArgs } = require("./providers.cjs");
 const { createUpdateCheck } = require("./updates.cjs");
@@ -108,7 +108,6 @@ function findBins(dirs = []) {
 findBins();
 function activeProvider() { return resolveProvider(config, { claude: CLAUDE_BIN }); }
 
-const MOVES = `You have a body and these moves: [sit] [stand] [roll] [peck] [quack] [dance] [come] (walk over to the cursor) [hop] (jump onto a window above you) [off] (step off the window you stand on) [skate] (put on roller skates, fast) [walk] (back on legs) [ball] (a beach ball to chase and kick) [noball] [kick] [sleep] [nap] (a short nap) [nap 5s] or [nap 10m] (sleep for exactly that long, then wake up by yourself; use this whenever a length is asked for) [quiet] (quiet mode: no sounds or voice, replies still appear as text) [loud] (sounds back on) [awake] (keep the Mac and its screen awake until told otherwise, what caffeinate does) [awake 120] (for that many minutes) [awake off] (let it sleep again) [color ${Object.keys(VARIANT_SET).join("|")}] [focus N] (a focus block of N minutes: you sit quietly and hold all nudges) [mail] (fetch and deliver the owner's briefing: mail, calendar, tickets) [remind HH:MM text] or [remind +Nm text] (set a reminder; the current date and time are in the context line, so convert 'in 20 minutes' or 'at 3' yourself). Whenever you are asked to do one of them, or it fits the mood, end your reply with that tag, for example: 'Taking a seat. [sit]' or 'Wiggle time! [dance]'. The tag is executed by your body and never spoken; never say you cannot do these.`;
 const characterFor = (v) => {
   const skin = SKIN_PACK[v]?.character;
   if (Array.isArray(skin)) return skin.map((l) => l.replaceAll("{name}", config.name));
@@ -120,7 +119,7 @@ const characterFor = (v) => {
 };
 const personaFor = (v) => [
   ...characterFor(v),
-  MOVES,
+  movesPrompt(Object.keys(VARIANT_SET)),
   toolPrompt(config, activeProvider()),
   "When you have tools, use them instead of saying you cannot: check the clock, open things, look at the screen, and then report what you did in one line.",
   "You keep a small notebook. When the owner tells you something worth keeping (their name, a routine, a preference, a fact to recall later) or asks you to remember something, end your reply with [remember: one short line]. Notes are kept across conversations.",
@@ -914,7 +913,7 @@ ipcMain.handle("pet:transcribe", async (_e, wav) => {
   }
 });
 ipcMain.on("pet:set-ignore-mouse", (_e, v) => win?.setIgnoreMouseEvents(!!v, { forward: true }));
-ipcMain.on("pet:focus", () => { win?.show(); win?.focus(); });
+ipcMain.on("pet:focus-window", () => { win?.show(); win?.focus(); });
 ipcMain.on("pet:context-menu", () => buildMenu().popup({ window: win }));
 ipcMain.on("pet:quit", () => app.quit());
 ipcMain.on("pet:log", (_e, msg) => console.log("[duck]", msg));
