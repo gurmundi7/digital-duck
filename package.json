@@ -31,7 +31,7 @@
     "eslint": "10.14.0",
     "onnxruntime-web": "1.27.0",
     "three": "0.164.1",
-    "vite": "6.4.5"
+    "vite": "8.3.5"
   },
   "build": {
     "appId": "com.gurpreetmundi.digitalduck",
