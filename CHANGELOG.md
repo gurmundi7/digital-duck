@@ -1,6 +1,12 @@
 # Changelog
 
-## 0.3.0
+## 0.3.1
+
+- The welcome tour now helps when no AI is set up yet. Pick Claude Code, Codex, a free Gemini key, Ollama on this Mac, or an API key you already have. The duck walks you through the steps, checks them, and asks a test question. You can still skip it.
+- Tells you once when a new version is out, and adds Get version X… to the 🦆 menu. It asks GitHub for the latest version number once a day. Turn it off in Settings → Pet.
+- SECURITY.md and the README say what each brain can reach at each access level, and the README says how to remove the duck.
+
+## 0.3.0 (not released, ships in 0.3.1)
 
 - A short welcome tour opens on first launch: what the duck does, pick it up, talk to it, things to try, and where everything lives. It picks or sets up a brain if none is ready. Skip it any time; it stays in the 🦆 menu as Welcome tour.
 - Chat through more brains: Codex CLI, Gemini CLI, the OpenAI API (or any OpenAI-compatible server such as Ollama or LM Studio) and the Gemini API, as well as Claude Code and the Anthropic API. Pick one in Settings → Brain → Who answers.
