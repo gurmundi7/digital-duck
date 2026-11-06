@@ -13,6 +13,7 @@ const { APP_ID, APP_NAME, DEFAULT_CONFIG, BASE_VARIANTS, loadSkinPack } = requir
 const { accessLevel, toolArgs, toolPrompt, validateSettings, settingsView, parseVoices } = require("./settings.cjs");
 const { createApiBrain, saveKey, readKey, deleteKey } = require("./apibrain.cjs");
 const { PROVIDERS, API_PROVIDERS, CLI_KEYS, resolveProvider, modelFor, levelFor, takeOpenTags, openArgs } = require("./providers.cjs");
+const { createUpdateCheck } = require("./updates.cjs");
 const { tourDue, brainStatus, setupChoices, setupGuide, tourUrls, tourCommands, pickOllamaModel, explainError, TRY_PHRASES, TEST_QUESTION, OLLAMA_URL } = require("./tour.cjs");
 const { createCliBrain, withCliKey } = require("./clibrain.cjs");
 const { attachLogFile } = require("./logfile.cjs");
@@ -220,7 +221,9 @@ const send = (cmd) => win?.webContents.send("pet:command", cmd);
 
 function buildMenu() {
   const variants = Object.keys(VARIANT_SET);
+  const update = updates?.latest();
   return Menu.buildFromTemplate([
+    ...(update ? [{ label: `Get version ${update.version}…`, click: () => shell.openExternal(update.url) }, { type: "separator" }] : []),
     { label: `Type to the duck (${config.typeHotkey})`, click: () => send({ type: "chat" }) },
     { label: config.listen ? `Listen (${config.hotkey})` : "Listen (turn on Voice input in Settings)", enabled: !!config.listen, click: () => listen() },
     { type: "separator" },
@@ -689,7 +692,7 @@ function applySettings(patch) {
   Object.assign(config.work, next.work);
   Object.assign(config.nudges, next.nudges);
   const brainBefore = activeProvider();
-  for (const k of ["provider", "model", "openaiBaseUrl", "access", "mcp", "voice", "rate", "listen", "hotkey", "typeHotkey", "display", "name"]) config[k] = next[k];
+  for (const k of ["provider", "model", "openaiBaseUrl", "access", "mcp", "updateCheck", "voice", "rate", "listen", "hotkey", "typeHotkey", "display", "name"]) config[k] = next[k];
   const musicKeysBefore = { ...config.musicKeys };
   Object.assign(config.musicKeys, next.musicKeys);
   if (!("openApps" in next)) delete config.openApps;
@@ -701,6 +704,7 @@ function applySettings(patch) {
   if (before.nudges.calendar !== config.nudges.calendar) nudges?.setCalendar(config.nudges.calendar);
   if (before.nudges.notificationsFile !== config.nudges.notificationsFile) nudges?.setNotificationsFile(config.nudges.notificationsFile);
   if (before.work.reminders !== config.work.reminders) { if (config.work.reminders) reminders?.start(); else reminders?.stop(); }
+  if (before.updateCheck !== config.updateCheck) { if (config.updateCheck) updates?.start(); else updates?.stop(); }
   if (before.work.prWatch !== config.work.prWatch) { if (config.work.prWatch) prwatch?.start(); else prwatch?.stop(); }
   if (String(before.display) !== String(config.display)) placeWindow({ reload: true });
   if (before.name !== config.name) send({ type: "config", name: config.name, variant });
@@ -719,6 +723,13 @@ ipcMain.handle("settings:load", () => ({
   login: loginItemOn(),
 }));
 ipcMain.handle("settings:save", (_e, patch) => applySettings(patch && typeof patch === "object" ? patch : {}));
+
+// ── Updates: only in a built app, which knows its version and where it was published ──
+const PUBLISHED = require("../package.json").build?.publish?.[0];
+const updates = app.isPackaged && PUBLISHED ? createUpdateCheck({
+  fetch, current: app.getVersion(), repo: `${PUBLISHED.owner}/${PUBLISHED.repo}`, log: (m) => console.info(m),
+  onFound: ({ version }) => { if (!inCall()) send({ type: "say", value: `Version ${version} of me is out. Get it from my menu.` }); },
+}) : null;
 
 // ── Welcome tour: opens by itself once for a new owner, and from the menu after ──
 let welcomeWin = null;
@@ -958,6 +969,7 @@ app.whenReady().then(() => {
   createWindow();
   createTray();
   if (tourOnLaunch) win.webContents.once("did-finish-load", () => setTimeout(openWelcome, 2500));
+  if (config.updateCheck !== false) setTimeout(() => updates?.start(), 30000);
   startWinlist();
   startMicwatch();
   startNudges();

@@ -148,11 +148,20 @@ What it reads, all on your Mac:
 
 What it sends:
 
-- **Chat** goes to the company behind the brain you picked (Anthropic, OpenAI or Google), or to the OpenAI-compatible server you set, through its CLI or your API key: what you type or say, a short context line (date, time, how the duck feels, whether you are on a call), its character description, and its notebook of things you asked it to remember. Nothing else.
+- **Chat** goes to the company behind the brain you picked (Anthropic, OpenAI or Google), or to the OpenAI-compatible server you set, through its CLI or your API key: what you type or say, a short context line (date, time, how the duck feels, whether you are on a call), its character description, and its notebook of things you asked it to remember. Claude Code and the APIs get nothing else. Codex CLI and Gemini CLI run in read-only modes that still let them read files on your Mac, so what they read while answering can go too.
 - **Look things up and Full access** let it search the web through that brain, and with Full access, read anything on your Mac it decides it needs to answer you.
 - **Connectors**, only with that switch on: the CLI brain can read whatever your linked connectors can reach, and the morning briefing asks it about your mail and meetings.
+- **Update check**: once a day, a request to `api.github.com` for the latest release of this repository. No account or ID. Turn it off in Settings → Pet.
 
 No analytics, no telemetry, no accounts. Its notebook, reminders and chat history stay in the config folder. So does `app.log`, a log of what the app did, kept under about 4 MB. It can include reminder and nudge text, song titles and app names, and never leaves your Mac.
+
+## Uninstall
+
+Quit the duck from the 🦆 menu and turn off **Start at login** in Settings first. Then delete:
+
+- **Digital Duck** from Applications
+- `~/Library/Application Support/Digital Duck`: the config, notebook, reminders, chat session and `app.log`
+- any API keys you saved: open Keychain Access, search for **Digital Duck**, and delete the items there
 
 ## How it works
 

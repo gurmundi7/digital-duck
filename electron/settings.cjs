@@ -65,6 +65,7 @@ function validateSettings(patch, current) {
   take("openaiBaseUrl", (v) => typeof v === "string" && (v.trim() === "" || /^https?:\/\/[^\s"]{1,500}$/.test(v.trim())), "Leave empty for OpenAI, or give a URL like http://localhost:11434/v1.", (v) => { next.openaiBaseUrl = v.trim(); });
   take("access", (v) => ACCESS_LEVELS.includes(v), "Pick one of the four levels.", (v) => { next.access = v; delete next.openApps; });
   take("mcp", bool, "On or off.", (v) => { next.mcp = v; });
+  take("updateCheck", bool, "On or off.", (v) => { next.updateCheck = v; });
   take("voice", (v) => typeof v === "string" && VOICE.test(v), "Pick a voice from the list.", (v) => { next.voice = v; });
   take("rate", (v) => Number.isInteger(v) && v >= 90 && v <= 400, "Speed is 90 to 400 words a minute.", (v) => { next.rate = v; });
   take("listen", bool, "On or off.", (v) => { next.listen = v; });
@@ -85,7 +86,7 @@ function validateSettings(patch, current) {
 function settingsView(config) {
   return {
     provider: PROVIDER_IDS.includes(config.provider) ? config.provider : "auto", model: config.model ?? "", openaiBaseUrl: config.openaiBaseUrl ?? "",
-    access: accessLevel(config), mcp: !!config.mcp,
+    access: accessLevel(config), mcp: !!config.mcp, updateCheck: config.updateCheck !== false,
     voice: config.voice, rate: config.rate, listen: !!config.listen, hotkey: config.hotkey, typeHotkey: config.typeHotkey,
     display: String(config.display), name: config.name ?? "",
     "pet.greetings": config.pet?.greetings !== false, "pet.wants": config.pet?.wants !== false, "pet.petting": config.pet?.petting !== false,
