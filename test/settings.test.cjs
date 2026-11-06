@@ -35,21 +35,21 @@ test("each level tells the duck what it can do, so it tries instead of refusing"
 });
 
 test("valid settings land in the config", () => {
-  const { config, errors } = validateSettings({ model: "opus", access: "full", rate: 220, "work.briefingTime": "08:30", "pet.petting": false }, base());
+  const { config, errors } = validateSettings({ model: "opus", access: "full", rate: 220, "work.reminders": false, "pet.petting": false }, base());
   assert.deepStrictEqual(errors, {});
   assert.strictEqual(config.model, "opus");
   assert.strictEqual(config.access, "full");
   assert.strictEqual(config.rate, 220);
-  assert.strictEqual(config.work.briefingTime, "08:30");
+  assert.strictEqual(config.work.reminders, false);
   assert.strictEqual(config.pet.petting, false);
 });
 
 test("bad values are refused with a message and keep the old value", () => {
   const current = base();
-  const { config, errors } = validateSettings({ model: "gpt; rm -rf ~", "work.briefingTime": "25:00", rate: 9000, hotkey: "D", access: "root" }, current);
-  assert.deepStrictEqual(Object.keys(errors).sort(), ["access", "hotkey", "model", "rate", "work.briefingTime"]);
+  const { config, errors } = validateSettings({ model: "gpt; rm -rf ~", "work.reminders": "yes", rate: 9000, hotkey: "D", access: "root" }, current);
+  assert.deepStrictEqual(Object.keys(errors).sort(), ["access", "hotkey", "model", "rate", "work.reminders"]);
   assert.strictEqual(config.model, current.model);
-  assert.strictEqual(config.work.briefingTime, current.work.briefingTime);
+  assert.strictEqual(config.work.reminders, current.work.reminders);
   assert.strictEqual(config.access, current.access);
 });
 

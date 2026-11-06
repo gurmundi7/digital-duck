@@ -289,14 +289,12 @@ window.addEventListener("keydown", (e) => {
 });
 
 // ── Nudges: the duck comes over, quacks, shows and says it ─────────────
-const DELIVERED_KINDS = new Set(["reminder", "mail", "pr", "ticket"]);
 function nudge({ kind, text }) {
-  const said = DELIVERED_KINDS.has(kind) ? `${line(sim.variant, "deliver", { name: ownerName() })} ${text}` : text;
+  const said = kind === "reminder" ? `${line(sim.variant, "deliver", { name: ownerName() })} ${text}` : text;
   const show = () => {
     bubble.show(said, { ttlMs: Math.min(40000, 7000 + said.length * 60) });
     if (!audio.muted) pet.announce(said, line(sim.variant, "newMessage"));
   };
-  if (kind === "mail") wants?.chatted();
   behaviour.deliver(cursorPx ? screenToWorld(cursorPx.x, innerHeight - 20).x : null, show);
 }
 const ownerName = () => appConfig.name || "you";
@@ -453,7 +451,6 @@ function runBodyAction(tag) {
     case "quiet": pet.setQuiet(true); break;
     case "loud": pet.setQuiet(false); break;
     case "nap": startNap(napMs(tag.slice(3))); break;
-    case "mail": pet.mail(wants?.describe() ?? ""); break;
     case "focus": pet.focus(Number(arg) || 25); break;
     case "awake": pet.awake(arg === "off" ? 0 : Number(arg) || -1); break;
     case "come": { const x = behaviour.cursorX ?? (cursorPx ? screenToWorld(cursorPx.x, innerHeight - 20).x : null); if (x !== null) behaviour.goTo(x); break; }
@@ -478,7 +475,6 @@ const IMPLIED = [
   [/\bkick\b/i, "kick"],
   [/\b(be quiet|quiet mode|hush|shush|mute|silence|no (more )?(sound|noise|talking))\b/i, "quiet"],
   [/\b(unmute|sound(s)? (back )?on|speak up|loud mode|talk again|you can talk)\b/i, "loud"],
-  [/\b(any (new )?(mail|e-?mail|letters|post|messages)|my briefing|morning briefing|catch me up|what('s| is) (new|up) today|what did i miss)\b/i, "mail"],
   [/\b(take a nap|have a nap|nap time|go (and )?nap)\b/i, "nap"],
   [/\b(legs back|back on (your )?legs|stop skating|take (the )?(skates|wheels) off|walk(ing)? mode)\b/i, "walk"],
 ];

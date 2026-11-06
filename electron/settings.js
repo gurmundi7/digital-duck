@@ -54,7 +54,6 @@ function showBrain() {
   $("brainNote").textContent = `${auto}${missing}${capped}${notes[p.id]}`;
 }
 
-function showFile(p) { $("nudgesFile").textContent = p || "None"; }
 
 async function init() {
   const s = await window.settings.load();
@@ -77,7 +76,6 @@ async function init() {
   }
   for (const r of document.querySelectorAll("input[name=access]")) r.checked = r.value === v.access;
   $("login").checked = s.login;
-  showFile(v["nudges.notificationsFile"]);
 
   showBrain();
 
@@ -92,8 +90,6 @@ async function init() {
   }
   $("login").addEventListener("change", () => window.settings.setLogin($("login").checked));
   $("preview").onclick = () => window.settings.previewVoice($("voice").value, Number($("rate").value));
-  $("pickFile").onclick = async () => { const p = await window.settings.pickFile(); if (p) { showFile(p); save({ "nudges.notificationsFile": p }); } };
-  $("clearFile").onclick = () => { showFile(""); save({ "nudges.notificationsFile": "" }); };
   $("provider").addEventListener("change", () => save({ provider: $("provider").value }));
   $("key").onclick = () => window.settings.openKey(state.keyProvider);
   $("raw").onclick = () => window.settings.openRaw();

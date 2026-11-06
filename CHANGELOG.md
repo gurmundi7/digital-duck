@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- The duck is a pet first. Pull request watch, the morning briefing, the end-of-day recap and the nudges file are gone, along with the `[mail]` tag and Deliver my briefing now. Ask about your mail or your day in chat instead; connectors still answer. Settings → Work is now Your day.
+
 ## 0.3.1
 
 - The welcome tour now helps when no AI is set up yet. Pick Claude Code, Codex, a free Gemini key, Ollama on this Mac, or an API key you already have. The duck walks you through the steps, checks them, and asks a test question. You can still skip it.

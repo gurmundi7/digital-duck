@@ -8,7 +8,6 @@ contextBridge.exposeInMainWorld("pet", {
   remind: (spec) => ipcRenderer.invoke("pet:remind", spec),
   reminders: () => ipcRenderer.invoke("pet:reminders"),
   focus: (minutes) => ipcRenderer.send("pet:focus", minutes),
-  mail: (context) => ipcRenderer.send("pet:mail", context),
   saveWants: (w) => ipcRenderer.send("pet:wants", w),
   say: (text) => ipcRenderer.invoke("pet:say", text),
   announce: (text, short) => ipcRenderer.invoke("pet:announce", text, short),

@@ -26,11 +26,8 @@ test("the README opens with the unofficial line", () => {
 
 test("a stranger's first launch has every outside-reading feature off", () => {
   assert.strictEqual(DEFAULT_CONFIG.listen, false);
-  assert.strictEqual(DEFAULT_CONFIG.work.prWatch, false);
-  assert.strictEqual(DEFAULT_CONFIG.work.briefing, false);
   assert.strictEqual(DEFAULT_CONFIG.nudges.enabled, false);
   assert.strictEqual(DEFAULT_CONFIG.nudges.calendar, false);
-  assert.strictEqual(DEFAULT_CONFIG.nudges.notificationsFile, "");
   assert.deepStrictEqual(DEFAULT_CONFIG.extraArgs, []);
 });
 

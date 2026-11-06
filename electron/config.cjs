@@ -44,7 +44,7 @@ const DEFAULT_CONFIG = {
   mcpServers: {},
   name: os.userInfo().username,
   pet: { greetings: true, wants: true, petting: true },
-  work: { reminders: true, briefing: false, briefingTime: "09:15", prWatch: false, endOfDay: false, endOfDayTime: "17:45" },
+  work: { reminders: true },
 };
 
 const BASE_VARIANTS = ["classic", "charcoal", "purple", "blue"];
